@@ -18,8 +18,6 @@ import logging
 
 # Output directories
 trk_outdir = "/Users/jrenner/IFIC/dnn/tracks";   # output directory for tracks
-fit_outdir = "/Users/jrenner/IFIC/pylosk/fit";   # output directory for track fits
-plt_outdir = "/Users/jrenner/IFIC/pylosk/plots"; # output directory for plots
 
 trk_name = "dnn2d_test";  # name assigned to this run; will be used in naming the output files
 trk_bb = True;       # set to true to create "double-beta"-like tracks
