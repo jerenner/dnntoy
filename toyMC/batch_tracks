@@ -1,0 +1,73 @@
+#!/usr/bin/perl
+## ---------------------------------------------------------------------------------
+## batch_tracks
+## ---------------------------------------------------------------------------------
+## 
+## Runs the track analysis and voxelization steps on multiple cores.  
+##
+## TO USE THIS SCRIPT:
+##  - set the queue options and number of cores and events (run-specific parameters
+##     should be set in trackdefs.py)
+##  - run with ./batch_tracks
+##
+## ---------------------------------------------------------------------------------
+use POSIX;
+$debug = 1;       # debug output for this script
+
+# ----------------------------------------------------------------------------------
+# Options
+# ----------------------------------------------------------------------------------
+
+# Location to which to save bash and output files (will be in a subdirectory called bash)
+$DIR_IOBASE = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks/dnn3d_1mm_si";
+
+# Location of trackgen.py and trackvox.py
+$DIR_PYBASE = "/data4/NEXT/users/jrenner/dnn/dnntoy/toyMC";
+
+# Number of cores and events per core
+$ncores = 50;
+$evts_per_core = 2000;
+
+# Queue parameters
+$walltime = "24:00:00";
+$qtype = "long";
+
+# ----------------------------------------------------------------------------------
+
+# Construct the bash directory.
+$dirname_bash = $DIR_IOBASE . "/bash";
+if($debug) { print "Creating directory structure...\n"; }
+if(!(-d $dirname_bash)) {
+    system("mkdir -p $dirname_bash"); print "--> Created directory $dirname_bash\n";
+}
+
+# Loop over all cores.
+for(my $cr = 0; $cr < $ncores; $cr += 1) {
+
+    # Get the event start number to use for this core.
+    $evt_start = $cr*$evts_per_core;
+    
+    $ifname_qfile = $dirname_bash . "/run_core.$cr.pbs";
+    $ofname_out = $dirname_bash . "/run_core.$cr.out";
+    $ofname_err = $dirname_bash . "/run_core.$cr.err";
+
+    # Write the input configuration file
+    open(F_BASH, "> $ifname_qfile");
+    print "Printing .pbs file for run $fnum...\n";
+    print F_BASH <<ENDFILE;
+#PBS -N imain
+#PBS -q $qtype
+#PBS -l nodes=1:ppn=1,walltime=$walltime
+#PBS -e $ofname_err
+#PBS -o $ofname_out
+#PBS -V
+#
+python $DIR_PYBASE/trackgen.py $evt_start
+python $DIR_PYBASE/trackvox.py $evt_start
+ENDFILE
+    close(F_BASH);
+
+    print "--> Submitting job file $ifname_qfile to queue\n";
+    system("qsub $ifname_qfile");
+
+}
