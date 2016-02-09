@@ -17,8 +17,6 @@ from scipy.interpolate import interp1d
 from trackdefs import *
 
 from abc import ABCMeta, abstractmethod
-import logging 
-logging.basicConfig(level=logging.DEBUG)
 
 grdcol = 0.98;
 

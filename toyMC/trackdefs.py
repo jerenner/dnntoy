@@ -10,16 +10,15 @@ import scipy.integrate as integrate
 import random as rd
 import os
 from math import *
-import logging 
 
 # -------------------------------------------------------------------------------------------------------
 # Frequently modified parameters:
 # -------------------------------------------------------------------------------------------------------
 
 # Output directories
-trk_outdir = "/Users/jrenner/IFIC/dnn/tracks";   # output directory for tracks
+trk_outdir = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks";   # output directory for tracks
 
-trk_name = "dnn2d_test";  # name assigned to this run; will be used in naming the output files
+trk_name = "dnn3d_1mm_si";  # name assigned to this run; will be used in naming the output files
 trk_bb = True;       # set to true to create "double-beta"-like tracks
 num_tracks = 10;  # number of tracks to generate and/or fit
 
@@ -47,7 +46,6 @@ plt_units = "mm";
 plt_imgtype = "png";
 plt_show = False;
 plt_print = True;
-plt_3dprint = True;
 
 # -----------------------------------------------------------------------------
 # Less frequently modified parameters:

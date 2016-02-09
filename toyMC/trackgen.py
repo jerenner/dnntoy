@@ -47,7 +47,7 @@ if(not os.path.isdir("{0}/{1}".format(trk_outdir,trk_name))):
 if(not os.path.isdir("{0}/{1}".format(trk_outdir,trk_name))): os.mkdir("{0}/{1}".format(trk_outdir,trk_name));
 
 # Read in the stopping power and interpolate.
-xesp_tbl = np.loadtxt("data/xe_estopping_power_NIST.dat");
+xesp_tbl = np.loadtxt("{0}/data/xe_estopping_power_NIST.dat".format(os.path.dirname(os.path.abspath(__file__))));
 rho = pc_rho0*(Pgas/(Tgas/273.15))*(pc_m_Xe/pc_NA);
 e_vals = xesp_tbl[:,0];
 dEdx_vals = xesp_tbl[:,1];
