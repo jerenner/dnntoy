@@ -12,22 +12,22 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-fdir = "/Users/jrenner/IFIC/dnn/tracks/data"
-rname = "dnn3d_1mm_224x224x224"
+fdir = "/home/jrenner/dnn/data"
+rname = "dnn3d_9mm_28x28x28"
 
 training_run = True;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
-vox_ext = 112
-vox_size = 1
+vox_ext = 126
+vox_size = 9
 nclass = 2
 
-num_batches = 100 #2000
+num_batches = 600 #2000
 batch_size = 250 #100
 
-ntrain_evts = 750     # number of training evts per dataset
-ntest_evts = 250      # number of test events per dataset
+ntrain_evts = 7500     # number of training evts per dataset
+ntest_evts = 2500      # number of test events per dataset
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -38,7 +38,7 @@ print "Found dim of {0} for {1} pixels.".format(pdim,npix)
 fname_si = "{0}/vox_{1}_si.h5".format(fdir,rname)
 fname_bg = "{0}/vox_{1}_bg.h5".format(fdir,rname)
 fn_saver = "{0}/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
-fn_acc = "{0}/accuracy.dat".format(fdir)
+fn_acc = "{0}/accuracy_{1}.dat".format(fdir,rname)
 
 # -----------------------------------------------------------------------------
 # Read in all the data.

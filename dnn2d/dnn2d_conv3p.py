@@ -16,22 +16,22 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-fdir = "/Users/jrenner/IFIC/dnn/tracks/data"
-rname = "dnn3d_1mm_224x224x224"
+fdir = "/home/jrenner/dnn/data"
+rname = "dnn3d_9mm_28x28x28"
 
 training_run = True;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
-vox_ext = 112
-vox_size = 1
+vox_ext = 126
+vox_size = 9
 nclass = 2
 
-num_batches = 100 #2000
-batch_size = 250 #100
+num_batches = 60000 #2000
+batch_size = 100 #100
 
-ntrain_evts = 750     # number of training evts per dataset
-ntest_evts = 250      # number of test events per dataset
+ntrain_evts = 75000     # number of training evts per dataset
+ntest_evts = 25000      # number of test events per dataset
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -42,7 +42,7 @@ print "Found dim of {0} for {1} pixels.".format(pdim,npix)
 fname_si = "{0}/vox_{1}_si.h5".format(fdir,rname)
 fname_bg = "{0}/vox_{1}_bg.h5".format(fdir,rname)
 fn_saver = "{0}/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
-fn_acc = "{0}/accuracy.dat".format(fdir)
+fn_acc = "{0}/accuracy_{1}_pix_{2}_train_{3}.dat".format(fdir,rname,npix,ntrain_evts)
 
 # -----------------------------------------------------------------------------
 # Read in all the data.
@@ -170,7 +170,7 @@ x = tf.placeholder(tf.float32, [None, 3*npix])
 y_ = tf.placeholder(tf.float32, [None, nclass])
 
 # First convolutional layer
-W_conv1 = weight_variable([5, 5, 1, 32])
+W_conv1 = weight_variable([5, 5, 3, 32])
 b_conv1 = bias_variable([32])
 x_image = tf.reshape(x, [-1,pdim,pdim,3])
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
