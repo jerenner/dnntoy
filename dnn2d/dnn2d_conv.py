@@ -13,20 +13,21 @@ import numpy as np
 import tensorflow as tf
 
 fdir = "/Users/jrenner/IFIC/dnn/tracks/data"
-rname = "dnn3d_9mm_28x28x28"
+rname = "dnn3d_1mm_224x224x224"
 
-training_run = False;                           # run training step
-test_eval_only = True and (not training_run);  # only read test data (cannot be True while training)
+training_run = True;                           # run training step
+test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
-vox_ext = 126
-vox_size = 9
+vox_ext = 112
+vox_size = 1
 nclass = 2
 
-num_batches = 6000 #2000
-batch_size = 100 #100
+num_batches = 100 #2000
+batch_size = 250 #100
 
-ntrain_evts = 90000     # number of training evts per dataset (remainder used for test)
+ntrain_evts = 750     # number of training evts per dataset
+ntest_evts = 250      # number of test events per dataset
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -36,7 +37,8 @@ print "Found dim of {0} for {1} pixels.".format(pdim,npix)
 # Constructed file names.
 fname_si = "{0}/vox_{1}_si.h5".format(fdir,rname)
 fname_bg = "{0}/vox_{1}_bg.h5".format(fdir,rname)
-fn_saver = "tfmdl_{0}_pix_{1}_train_{2}.ckpt".format(rname,npix,ntrain_evts)   # for saving trained network
+fn_saver = "{0}/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
+fn_acc = "{0}/accuracy.dat".format(fdir)
 
 # -----------------------------------------------------------------------------
 # Read in all the data.
@@ -47,17 +49,15 @@ dat_bg = []; lbl_bg = []
 # Signal
 h5f_si = h5py.File(fname_si,'r')
 if(test_eval_only):                                  # only read test data 
-    ntrk = ntrain_evts; nsi_evts = len(h5f_si)
-elif(training_run):                                  # only read training data
-    ntrk = 0; nsi_evts = ntrain_evts
+    ntrk = ntrain_evts; nsi_evts = ntrain_evts + ntest_evts #len(h5f_si)
 else:                                                # read all data
-    ntrk = 0; nsi_evts = len(h5f_si)
+    ntrk = 0; nsi_evts = ntrain_evts + ntest_evts #len(h5f_si)
     
 print "Reading signal events...";
 while(ntrk < nsi_evts):
   trkn = h5f_si['trk{0}'.format(ntrk)]
   darr = np.zeros(npix)
-  xarr = trkn[0]; yarr = trkn[1]; earr = trkn[2]
+  xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
   for xx,yy,ee in zip(xarr,yarr,earr):
       darr[int(yy*pdim + xx)] += ee
   darr *= 1./max(darr)
@@ -72,16 +72,14 @@ h5f_si.close()
 # Training, background
 h5f_bg = h5py.File(fname_bg,'r')
 if(test_eval_only):                                  # only read test data 
-    ntrk = ntrain_evts; nbg_evts = len(h5f_bg)
-elif(training_run):                                  # only read training data
-    ntrk = 0; nbg_evts = ntrain_evts
+    ntrk = ntrain_evts; nbg_evts = ntrain_evts + ntest_evts # len(h5f_bg)
 else:                                                # read all data
-    ntrk = 0; nbg_evts = len(h5f_bg)
+    ntrk = 0; nbg_evts = ntrain_evts + ntest_evts # len(h5f_bg)
     
 while(ntrk < nbg_evts):
   trkn = h5f_bg['trk{0}'.format(ntrk)]
   darr = np.zeros(npix)
-  xarr = trkn[0]; yarr = trkn[1]; earr = trkn[2]
+  xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
   for xx,yy,ee in zip(xarr,yarr,earr):
       darr[int(yy*pdim + xx)] += ee
   darr *= 1./max(darr)
@@ -108,6 +106,9 @@ else:
     
     dat_test_si = dat_si[ntrain_evts:]; dat_test_bg = dat_bg[ntrain_evts:]
     lbl_test_si = lbl_si[ntrain_evts:]; lbl_test_bg = lbl_bg[ntrain_evts:]
+    
+print "Training set has: {0} elements with {1} labels".format(len(dat_train),len(lbl_train))
+print "Test set has: {0} elements with {1} labels (si), {2} elements with {3} labels (bg)".format(len(dat_test_si),len(lbl_test_si),len(dat_test_bg),len(lbl_test_bg))
 
 # -----------------------------------------------------------------------------
 # Define helper methods.
@@ -166,7 +167,7 @@ b_fc2 = bias_variable([nclass])
 y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
 # Set up for training
-cross_entropy = -tf.reduce_sum(y_*tf.log(y_conv))
+cross_entropy = -tf.reduce_sum(y_*tf.log(y_conv + 1.0e-9))
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
@@ -185,6 +186,7 @@ else:
 
     # Train the NN in batches.
     nbatch_dat = len(dat_train) / batch_size  # number of batches that fit in the data length
+    lacc_tr = []; lacc_si = []; lacc_bg = []
     for bnum in range(num_batches):
         
         print "Training batch {0} of {1}".format(bnum,num_batches)
@@ -205,22 +207,36 @@ else:
         batch_xs = dat_train[btemp*batch_size:(btemp + 1)*batch_size,:]
         batch_ys = lbl_train[btemp*batch_size:(btemp + 1)*batch_size,:]
         sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys, keep_prob: 0.5})
+
+        # Check accuracy of this run.
+        acc_tr = sess.run(accuracy, feed_dict={x: batch_xs, y_: batch_ys, keep_prob: 1.0})
+        acc_si = sess.run(accuracy, feed_dict={x: dat_test_si[0:100], y_: lbl_test_si[0:100], keep_prob: 1.0})
+        acc_bg = sess.run(accuracy, feed_dict={x: dat_test_bg[0:100], y_: lbl_test_bg[0:100], keep_prob: 1.0})
+        lacc_tr.append(acc_tr); lacc_si.append(acc_si); lacc_bg.append(acc_bg)
+        print "-- Training accuracy = {0}; Validation accuracy = {1} (si), {2} (bg)".format(acc_tr,acc_si,acc_bg)
     
     # Save the trained model.
     print "Saving trained model to: {0}".format(fn_saver)
     save_path = saver.save(sess, fn_saver)
+    
+    # Save the accuracy lists.
+    f_acc = open(fn_acc,"w")
+    f_acc.write("# train v_si v_bg -- one entry per iteration\n")
+    for atr,asi,abg in zip(lacc_tr,lacc_si,lacc_bg):
+        f_acc.write("{0} {1} {2}\n".format(atr,asi,abg))
+    f_acc.close()
 
 # Evaluate the performance.
 if(not training_run):
     correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
     print "On test signal data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_si[0:1000], y_: lbl_test_si[0:1000], keep_prob: 1.0})
+    print sess.run(accuracy, feed_dict={x: dat_test_si[0:200], y_: lbl_test_si[0:200], keep_prob: 1.0})
     print "On test background data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_bg[0:1000], y_: lbl_test_bg[0:1000], keep_prob: 1.0})
+    print sess.run(accuracy, feed_dict={x: dat_test_bg[0:200], y_: lbl_test_bg[0:200], keep_prob: 1.0})
 
     if(not test_eval_only):
         print "On training signal data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_si[0:1000], y_: lbl_train_si[0:1000], keep_prob: 1.0})
+        print sess.run(accuracy, feed_dict={x: dat_train_si[0:200], y_: lbl_train_si[0:200], keep_prob: 1.0})
         print "On training background data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_bg[0:1000], y_: lbl_train_bg[0:1000], keep_prob: 1.0})
+        print sess.run(accuracy, feed_dict={x: dat_train_bg[0:200], y_: lbl_train_bg[0:200], keep_prob: 1.0})
