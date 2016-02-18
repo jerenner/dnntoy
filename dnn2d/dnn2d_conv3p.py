@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb  8 2016
+Created on Wed Feb  16 2016
+
+dnn2d_conv3p.py
+
+2D convolutional neural network using 3 projections
 
 Uses code from TensorFlow tutorial:
 https://www.tensorflow.org/versions/0.6.0/tutorials/mnist/pros/index.html
@@ -23,11 +27,11 @@ vox_ext = 126
 vox_size = 9
 nclass = 2
 
-num_batches = 600 #2000
-batch_size = 250 #100
+num_batches = 60000 #2000
+batch_size = 100 #100
 
-ntrain_evts = 7500     # number of training evts per dataset
-ntest_evts = 2500      # number of test events per dataset
+ntrain_evts = 75000     # number of training evts per dataset
+ntest_evts = 25000      # number of test events per dataset
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -38,7 +42,7 @@ print "Found dim of {0} for {1} pixels.".format(pdim,npix)
 fname_si = "{0}/vox_{1}_si.h5".format(fdir,rname)
 fname_bg = "{0}/vox_{1}_bg.h5".format(fdir,rname)
 fn_saver = "{0}/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
-fn_acc = "{0}/accuracy_{1}.dat".format(fdir,rname)
+fn_acc = "{0}/accuracy_{1}_pix_{2}_train_{3}.dat".format(fdir,rname,npix,ntrain_evts)
 
 # -----------------------------------------------------------------------------
 # Read in all the data.
@@ -55,17 +59,32 @@ else:                                                # read all data
     
 print "Reading signal events...";
 while(ntrk < nsi_evts):
-  trkn = h5f_si['trk{0}'.format(ntrk)]
-  darr = np.zeros(npix)
-  xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
-  for xx,yy,ee in zip(xarr,yarr,earr):
-      darr[int(yy*pdim + xx)] += ee
-  darr *= 1./max(darr)
-  dat_si.append(darr)
-  lbl_si.append([1, 0])
-  ntrk += 1
+    trkn = h5f_si['trk{0}'.format(ntrk)]
+    darr = np.zeros(3*npix)
+    xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
+
+    # -----------------------
+    # Store the projections.
+    # -----------------------
+
+    # x-y
+    for xx,yy,ee in zip(xarr,yarr,earr):
+        darr[3*int(yy*pdim + xx)] += ee
+      
+    # x-z
+    for xx,zz,ee in zip(xarr,zarr,earr):
+        darr[3*int(yy*pdim + xx) + 1] += ee
+        
+    # y-z
+    for yy,zz,ee in zip(yarr,zarr,earr):
+        darr[3*int(yy*pdim + xx) + 2] += ee
+        
+    darr *= 1./max(darr)
+    dat_si.append(darr)
+    lbl_si.append([1, 0])
+    ntrk += 1
   
-  if(ntrk % int(nsi_evts/100) == 0): print "Read {0}% ...".format(int(100.0*ntrk/nsi_evts));
+    if(ntrk % int(nsi_evts/100) == 0): print "Read {0}% ...".format(int(100.0*ntrk/nsi_evts));
 print "Read {0} signal events".format(len(dat_si))
 h5f_si.close()
 
@@ -77,17 +96,32 @@ else:                                                # read all data
     ntrk = 0; nbg_evts = ntrain_evts + ntest_evts # len(h5f_bg)
     
 while(ntrk < nbg_evts):
-  trkn = h5f_bg['trk{0}'.format(ntrk)]
-  darr = np.zeros(npix)
-  xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
-  for xx,yy,ee in zip(xarr,yarr,earr):
-      darr[int(yy*pdim + xx)] += ee
-  darr *= 1./max(darr)
-  dat_bg.append(darr)
-  lbl_bg.append([0, 1])
-  ntrk += 1
+    trkn = h5f_bg['trk{0}'.format(ntrk)]
+    darr = np.zeros(3*npix)
+    xarr = trkn[0]; yarr = trkn[1]; zarr = trkn[2]; earr = trkn[3]
+
+    # -----------------------
+    # Store the projections.
+    # -----------------------
+
+    # x-y
+    for xx,yy,ee in zip(xarr,yarr,earr):
+        darr[3*int(yy*pdim + xx)] += ee
+      
+    # x-z
+    for xx,zz,ee in zip(xarr,zarr,earr):
+        darr[3*int(yy*pdim + xx) + 1] += ee
+        
+    # y-z
+    for yy,zz,ee in zip(yarr,zarr,earr):
+        darr[3*int(yy*pdim + xx) + 2] += ee
+        
+    darr *= 1./max(darr)
+    dat_bg.append(darr)
+    lbl_bg.append([0, 1])
+    ntrk += 1
   
-  if(ntrk % int(nbg_evts/100) == 0): print "Read {0}% ...".format(int(100.0*ntrk/nbg_evts));
+    if(ntrk % int(nbg_evts/100) == 0): print "Read {0}% ...".format(int(100.0*ntrk/nbg_evts));
 print "Read {0} background events".format(len(dat_bg))
 h5f_bg.close()
 
@@ -132,15 +166,13 @@ def max_pool_2x2(x):
 # Set up the neural network.
 # -----------------------------------------------------------------------------
 
-x = tf.placeholder(tf.float32, [None, npix])
+x = tf.placeholder(tf.float32, [None, 3*npix])
 y_ = tf.placeholder(tf.float32, [None, nclass])
-#W = tf.Variable(tf.zeros([npix, nclass]))
-#b = tf.Variable(tf.zeros([nclass]))
 
 # First convolutional layer
-W_conv1 = weight_variable([5, 5, 1, 32])
+W_conv1 = weight_variable([5, 5, 3, 32])
 b_conv1 = bias_variable([32])
-x_image = tf.reshape(x, [-1,pdim,pdim,1])
+x_image = tf.reshape(x, [-1,pdim,pdim,3])
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
 
