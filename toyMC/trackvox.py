@@ -58,10 +58,16 @@ while (ntrk < num_tracks):
 
     # Read in the track.
     trkmat = h5fr['trk{0}'.format(ntrk + trk_startnum)];
-    trk_x0 = trkmat[0];
-    trk_y0 = trkmat[1];
-    trk_z0 = trkmat[2];
-    trk_deltaE = trkmat[3]*1000;
+    if(vox_already):                 # an already voxelized track will have energy in keV and (x,y,z) in voxel number
+        trk_x0 = trkmat[0]*vox_prev_size;
+        trk_y0 = trkmat[1]*vox_prev_size;
+        trk_z0 = trkmat[2]*vox_prev_size;
+        trk_deltaE = trkmat[3];        
+    else:
+        trk_x0 = trkmat[0];
+        trk_y0 = trkmat[1];
+        trk_z0 = trkmat[2];
+        trk_deltaE = trkmat[3]*1000;
 
     # Verify that the current grid gives sufficient range.
     rng = 2. * vox_ext;
