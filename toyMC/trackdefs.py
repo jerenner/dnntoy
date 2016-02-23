@@ -18,17 +18,19 @@ from math import *
 # Output directories
 trk_outdir = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks";   # output directory for tracks
 
-trk_name = "dnn3d_1mm_si";  # name assigned to this run; will be used in naming the output files
-trk_bb = True;       # set to true to create "double-beta"-like tracks
-num_tracks = 10;  # number of tracks to generate and/or fit
+trk_name = "dnn3d_NEXT100_si";  # name assigned to this run; will be used in naming the output files
+trk_bb = False;       # set to true to create "double-beta"-like tracks
+num_tracks = 50000;  # number of tracks to generate and/or fit
 
 Bfield = 0.0;      # applied magnetic field in Tesla
 MS0 = 13.6;        # multiple scattering parameter (should be 13.6)
 
 # Voxelization parameters
-vox_ext = 112;     # extent in x,y,z of voxelized track (in +/- directions): full allowed range is 2 * vox_ext
-vox_size = 1;      # voxel size
+vox_ext = 100;     # extent in x,y,z of voxelized track (in +/- directions): full allowed range is 2 * vox_ext
+vox_size = 10;      # voxel size
 vox_3d = True;    # output 3D voxels or 2D (x-y) projection
+vox_already = True;  # set to true if input tracks are already voxelized
+vox_prev_size = 2;   # for already voxelized tracks, the size of voxelization
 
 # Energy parameters
 E_0 = 2.447+0.511; # initial energy in MeV
