@@ -14,10 +14,11 @@ import numpy as np
 import tensorflow as tf
 
 from gnet import GoogleNet
+#from gnet_amir import GoogleNet_Amir
 
-fdir = "/Users/jrenner/IFIC/dnn/tracks/data"
-#rname = "dnn3d_9mm_28x28x28"
-rname = "dnn3d_1mm_224x224x224"
+fdir = "/home/jmbenlloch/dnntoy/data"
+rname = "dnn3d_toy_v1x1x1_r224x224x224"
+#rname = "dnn3d_toy_v5x5x5_r200x200x200"
 
 training_run = True;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
@@ -26,12 +27,16 @@ test_eval_only = False and (not training_run);  # only read test data (cannot be
 vox_ext = 112
 vox_size = 1
 nclass = 2
+vox_norm = 1.0      # voxel normalization
 
-num_batches = 100 #2000
-batch_size = 25 #100
+num_batches = 3000 #2000
+batch_size = 100 #100
 
-ntrain_evts = 75     # number of training evts per dataset
-ntest_evts = 25      # number of test events per dataset
+ntrain_evts = 750     # number of training evts per dataset
+ntest_evts = 250      # number of test events per dataset
+
+aopt_lr = 1.0e-4      # Adam optimizer learning rate
+aopt_eps = 1.0e-6     # Adam optimizer epsilon
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -68,18 +73,22 @@ while(ntrk < nsi_evts):
     # -----------------------
 
     # x-y
+    #for xx,yy,ee in zip(xarr,yarr,earr):
+    #    darr[int(yy*pdim + xx)] += ee
+
+    # x-y
     for xx,yy,ee in zip(xarr,yarr,earr):
         darr[3*int(yy*pdim + xx)] += ee
-      
-    # x-z
-    for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
-        
+
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 1] += ee
+  
+    # x-z
+    for xx,zz,ee in zip(xarr,zarr,earr):
+        darr[3*int(zz*pdim + xx) + 2] += ee
         
-    darr *= 1./max(darr)
+    darr *= vox_norm/max(darr)
     dat_si.append(darr)
     lbl_si.append([1, 0])
     ntrk += 1
@@ -105,18 +114,22 @@ while(ntrk < nbg_evts):
     # -----------------------
 
     # x-y
+    #for xx,yy,ee in zip(xarr,yarr,earr):
+    #    darr[int(yy*pdim + xx)] += ee
+
+    # x-y
     for xx,yy,ee in zip(xarr,yarr,earr):
         darr[3*int(yy*pdim + xx)] += ee
       
-    # x-z
-    for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
-        
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 1] += ee
+
+    # x-z
+    for xx,zz,ee in zip(xarr,zarr,earr):
+        darr[3*int(zz*pdim + xx) + 2] += ee
         
-    darr *= 1./max(darr)
+    darr *= vox_norm/max(darr)
     dat_bg.append(darr)
     lbl_bg.append([0, 1])
     ntrk += 1
@@ -149,19 +162,22 @@ print "Test set has: {0} elements with {1} labels (si), {2} elements with {3} la
 # -----------------------------------------------------------------------------
 
 print "Creating placeholders for input and output variables..."
-x = tf.placeholder(tf.float32, [batch_size, 3*npix])
+x = tf.placeholder(tf.float32, [batch_size, 3*npix]) # npix])
 x_image = tf.reshape(x, [-1,pdim,pdim,3])
-y_ = tf.placeholder(tf.float32, [None, nclass])
+y_ = tf.placeholder(tf.float32, [batch_size, nclass])
 
 # Set up the GoogleNet
 print "Reading in GoogleNet model..."
 net = GoogleNet({'data':x_image})
 y_out = net.get_output()
+print "Output layer is {0}".format(y_out)
 
 # Set up for training
 print "Setting up tf training variables..."
 cross_entropy = -tf.reduce_sum(y_*tf.log(y_out + 1.0e-9))
-train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
+train_step = tf.train.AdamOptimizer(learning_rate=aopt_lr,epsilon=aopt_eps).minimize(cross_entropy)
+#train_step = tf.train.GradientDescentOptimizer(0.3).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_out,1), tf.argmax(y_,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
@@ -170,13 +186,17 @@ sess = tf.Session()
 init_op = tf.initialize_all_variables()
 sess.run(init_op)
 
+# Load in the previously trained data.
+net.load('gnet.npy', sess)
+
 # Create a saver to save the DNN.
 saver = tf.train.Saver()
 
 # Restore saved variables if the option is set.
 if(not training_run):
-    print "Restoring variables read from file {0} ...".format(fn_saver)
-    saver.restore(sess,fn_saver)
+    #print "Restoring variables read from file {0} ...".format(fn_saver)
+    #saver.restore(sess,fn_saver)
+    net.load('gnet_amir.npy',sess)
 else:
 
     # Train the NN in batches.
@@ -201,12 +221,13 @@ else:
         
         batch_xs = dat_train[btemp*batch_size:(btemp + 1)*batch_size,:]
         batch_ys = lbl_train[btemp*batch_size:(btemp + 1)*batch_size,:]
-        sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
+        _, loss_val = sess.run([train_step, loss], feed_dict={x: batch_xs, y_: batch_ys})
+        print "Got loss value of {0}".format(loss_val)
 
         # Check accuracy of this run.
         acc_tr = sess.run(accuracy, feed_dict={x: batch_xs, y_: batch_ys})
-        acc_si = sess.run(accuracy, feed_dict={x: dat_test_si[0:100], y_: lbl_test_si[0:100]})
-        acc_bg = sess.run(accuracy, feed_dict={x: dat_test_bg[0:100], y_: lbl_test_bg[0:100]})
+        acc_si = sess.run(accuracy, feed_dict={x: dat_test_si[0:batch_size], y_: lbl_test_si[0:batch_size]})
+        acc_bg = sess.run(accuracy, feed_dict={x: dat_test_bg[0:batch_size], y_: lbl_test_bg[0:batch_size]})
         lacc_tr.append(acc_tr); lacc_si.append(acc_si); lacc_bg.append(acc_bg)
         print "-- Training accuracy = {0}; Validation accuracy = {1} (si), {2} (bg)".format(acc_tr,acc_si,acc_bg)
     
@@ -223,15 +244,13 @@ else:
 
 # Evaluate the performance.
 if(not training_run):
-    correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
     print "On test signal data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_si[0:200], y_: lbl_test_si[0:200], keep_prob: 1.0})
+    print sess.run(accuracy, feed_dict={x: dat_test_si[0:200], y_: lbl_test_si[0:200]})
     print "On test background data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_bg[0:200], y_: lbl_test_bg[0:200], keep_prob: 1.0})
+    print sess.run(accuracy, feed_dict={x: dat_test_bg[0:200], y_: lbl_test_bg[0:200]})
 
     if(not test_eval_only):
         print "On training signal data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_si[0:200], y_: lbl_train_si[0:200], keep_prob: 1.0})
+        print sess.run(accuracy, feed_dict={x: dat_train_si[0:200], y_: lbl_train_si[0:200]})
         print "On training background data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_bg[0:200], y_: lbl_train_bg[0:200], keep_prob: 1.0})
+        print sess.run(accuracy, feed_dict={x: dat_train_bg[0:200], y_: lbl_train_bg[0:200]})
