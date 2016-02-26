@@ -19,7 +19,7 @@ import tensorflow as tf
 fdir = "/home/jrenner/dnn/data"
 rname = "dnn3d_NEXT100_Paolina222_v5x5x5_r200x200x200"
 
-training_run = True;                           # run training step
+training_run = False;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
@@ -75,11 +75,11 @@ while(ntrk < nsi_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_si.append(darr)
@@ -112,11 +112,11 @@ while(ntrk < nbg_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_bg.append(darr)
