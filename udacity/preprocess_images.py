@@ -10,11 +10,10 @@ hashset = np.ndarray(shape=(len(image_files)),
                          dtype='|S16') #string array with the hash of images
 
 """
-from UIncludes import *
-from UParam import *
+from UGen import *
+nullh = '0000000000000000'
 
 
-###
 def load_letter(folder, num_images):
   """
   Loads the files found in folder (up to num_images)
@@ -25,14 +24,21 @@ def load_letter(folder, num_images):
   # http://www.scipy-lectures.org/advanced/image_processing/
   image_files = os.listdir(folder)
 
-  dim = min(len(image_files),num_images)
+  print("folder = {0}: images in folder ={1}".format(folder,len(image_files)))
+  wait()
 
-  dataset = np.ndarray(shape=(dim, image_size, image_size),dtype=np.float32) 
-  hashset = np.ndarray(shape=(dim),dtype='|S16') 
+  if len(image_files) < num_images:
+    print("error: number of images requested ={0}, images in dir ={1}".format(num_images,
+      image_files))
+    sys.exit()
+
+  dataset = np.ndarray(shape=(num_images, image_size, image_size),dtype=np.float32) 
+  hashset = np.ndarray(shape=(num_images),dtype='|S16') 
   
   image_index = 0
-  for image in os.listdir(folder):
-    if image_index == dim:
+
+  for image in image_files:
+    if image_index == num_images:
       break
 
     image_file = os.path.join(folder, image)
@@ -65,61 +71,31 @@ def load_letter(folder, num_images):
       if image_data.shape != (image_size, image_size):
         raise Exception('Unexpected image shape: %s' % str(image_data.shape))
 
-      dataset[image_index, :, :] = image_data #fills data for each index
-      hashset[image_index] = shash
+      if shash == nullh:
+        print("found null hash, skipping image")
+      else:
+        dataset[image_index, :, :] = image_data #fills data for each index
+        hashset[image_index] = shash
       
-      image_index += 1
+        image_index += 1
       
     except IOError as e:
       print('Could not read:', image_file, ':', e, ' skipping.')
-    
-  # num_images = image_index
-  # dataset = dataset[0:num_images, :, :]
-  # hashset = hashset[0:num_images]
-
-  # if num_images < min_num_images:
-  #   raise Exception('Many fewer images than expected: %d < %d' %
-  #                   (num_images, min_num_images))
-    
   
+  if image_index < num_images:
+    print("error: number of good images ={0}, images requested ={1}".format(image_index,
+      num_images))
+    sys.exit()  
+   
+  #dataset = dataset[0:num_images, :, :]
+  #hashset = hashset[0:num_images]
+
+   
+  print("in folder ={0}: found = {1} good images".format(folder,num_images))
+  print("dataset shape ={0}: hashset shape = {1} ".format(dataset.shape,hashset.shape))
+  wait()
   return dataset, hashset
 
-
-def pickle_data(pickle_file,dataset, hashset):
-  """
-  pickle all the data into a large file
-  """
-  try:
-    f = open(pickle_file, 'wb')
-    save = {
-      'letter_dataset': dataset,
-      'letter_hashset': hashset
-      }
-    pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
-    f.close()
-  except Exception as e:
-    print('Unable to save data to', pickle_file, ':', e)
-    raise
-###  
-
-def load_data(pickle_file):
-  """
-  pickle back the data as a dictionary 
-  datadict = {
-      'letter_dataset': dataset,
-      'letter_hashset': hashset
-      }
-  """
-  try:
-    f = open(pickle_file, 'rb')
-    datadict = pickle.load(f)
-    f.close()
-    dataset= datadict['letter_dataset']
-    hashset= datadict['letter_hashset']
-    return dataset, hashset
-  except Exception as e:
-    print('Unable to load data from', pickle_file, ':', e)
-    raise
 
 def pickle_datasets(data_folders, images_per_class, force=False):
   """
@@ -144,37 +120,23 @@ def pickle_datasets(data_folders, images_per_class, force=False):
   
   return dataset_names
 
-def plot_image(dataset,indx):
-  image = dataset[indx]
-  print("shape of image =",image.shape)
-  img = (image + pixel_depth / 2) / pixel_depth
-  plt.imshow(img)
-  plt.show()
-
-def print_hash(hset,indx):
-  print("for image ={}: hash ={} ".format(
-      indx,hset[indx]))
-
-def compare_hash(hset1,hset2,indx):
-  if hset1[indx] == hset2[indx]:
-    print("hashes matches for image ={}: hash ={} ".format(
-      indx,hset1[indx]))
-  else:
-    print("hash mitmach for image ={}".format(indx))
-    print("hash1 ={}, hash2 ={}".format(hset1[indx],hset2[indx]))
-
-def display(pickle_file,number_of_images=5):
+def pickle_data(pickle_file,dataset, hashset):
   """
-  displays images and check hashes for pickle_file
+  pickle all the data into a large file
   """
-  print("reading pickle file = {}".format(pickle_file))
-  print("reading {} images".format(number_of_images))
+  try:
+    f = open(pickle_file, 'wb')
+    save = {
+      'letter_dataset': dataset,
+      'letter_hashset': hashset
+      }
+    pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
+  except Exception as e:
+    print('Unable to save data to', pickle_file, ':', e)
+    raise
 
-  dataset, hashset =load_data(pickle_file)
 
-  for indx in range(number_of_images):
-    plot_image(dataset,indx)
-    print_hash(hashset,indx)
 
 
 def demo(folder,number_of_images=5):
@@ -244,7 +206,8 @@ JJGC, adapted and expanded from Udacity scripts
         'notMNIST_small/C', 'notMNIST_small/D', 'notMNIST_small/E', 
         'notMNIST_small/F', 'notMNIST_small/G', 'notMNIST_small/H', 
         'notMNIST_small/I', 'notMNIST_small/J']
-    test_images = 1800
+    
+    test_images = 1600
     print("pickle test dataset: test folders ={0}: images ={1}".
       format(test_folders, test_images))
 
@@ -275,7 +238,8 @@ JJGC, adapted and expanded from Udacity scripts
     'notMNIST_small/I.pickle', 'notMNIST_small/J.pickle']
 
     for pickle_file in test_datasets:
-      display(pickle_file,number_of_images=3)
+      sample =np.random.randint(0, 100, size=3)
+      display(pickle_file,sample)
 
   elif action == 'dtrain':
     print("dtrain")
@@ -288,7 +252,8 @@ JJGC, adapted and expanded from Udacity scripts
   'notMNIST_large/I.pickle', 'notMNIST_large/J.pickle']
 
     for pickle_file in train_datasets:
-      display(pickle_file,number_of_images=3)
+      sample =np.random.randint(0, 100, size=3)
+      display(pickle_file,sample)
   else:
     usage()
 
