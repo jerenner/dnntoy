@@ -17,12 +17,11 @@ import os
 from gnet import GoogleNet
 #from gnet_amir import GoogleNet_Amir
 
-fdir = "/home/jrenner/dnn/data"
+fdir = "/home/jmbenlloch/dnntoy/data"
 rname = "dnn3d_NEXT100_Paolina222_v2x2x2_r200x200x200"
 #rname = "dnn3d_toy_v5x5x5_r200x200x200"
 
 training_run = True;                           # run training step
-test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
 train_init = False;                             # if true, train from net with standard pre-training; if false, read in a previously trained net
     
 # Input variables
@@ -31,13 +30,13 @@ vox_size = 2
 nclass = 2
 vox_norm = 1.0      # voxel normalization
 
-ntrain_evts = 4000     # number of training evts per dataset
+ntrain_evts = 15000     # number of training evts per dataset
 #ntest_evts = 2000       # number of test events per dataset
-num_epochs = 30         # total number of epochs to train 
+num_epochs = 100         # total number of epochs to train 
 epoch_blk_size = 1      # number of epochs to run per block (before reading new dataset); set equal to num_epochs unless data to be read in multiple blocks
-dtblk_size = 500    # number of signal and background events per training block
+dtblk_size = 5000    # number of signal and background events per training block
 batch_size = 100       # training batch size
-acc_blk = 200          # number of events to use in checking for accuracy
+acc_blk = 2000          # number of events to use in checking for accuracy
 print "Params:\n ntrain_evts = {0}, num_epochs = {1}, epoch_blk_size = {2}, dtblk_size = {3}, batch_size = {4}, acc_blk = {5}".format(ntrain_evts,num_epochs,epoch_blk_size,dtblk_size,batch_size,acc_blk);
 
 aopt_lr = 1.0e-4      # Adam optimizer learning rate
