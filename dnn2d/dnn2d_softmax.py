@@ -19,8 +19,8 @@ fname_test_si = "{0}/vox_{1}_test_si.h5".format(fdir,rname)
 fname_test_bg = "{0}/vox_{1}_test_bg.h5".format(fdir,rname)
     
 # Input variables
-vox_ext = 96
-vox_size = 4
+vox_ext = 112
+vox_size = 1
 nclass = 2
 
 num_batches = 4000

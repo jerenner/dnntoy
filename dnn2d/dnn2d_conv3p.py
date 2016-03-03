@@ -17,21 +17,23 @@ import numpy as np
 import tensorflow as tf
 
 fdir = "/home/jrenner/dnn/data"
-rname = "dnn3d_9mm_28x28x28"
+rname = "dnn3d_NEXT100_Paolina222_v2x2x2_r200x200x200"
 
-training_run = True;                           # run training step
+training_run = False;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
-vox_ext = 126
-vox_size = 9
+vox_ext = 100
+vox_size = 2
 nclass = 2
 
-num_batches = 60000 #2000
+num_batches = 1000 #2000
 batch_size = 100 #100
+print "Number of batches = {0}; batch size = {1}".format(num_batches,batch_size)
 
-ntrain_evts = 75000     # number of training evts per dataset
-ntest_evts = 25000      # number of test events per dataset
+ntrain_evts = 1500     # number of training evts per dataset
+ntest_evts = 500       # number of test events per dataset
+print "Number of training events = {0}; number of test events = {1}".format(ntrain_evts,ntest_evts)
 
 # Calculated parameters
 pdim = int(2 * vox_ext / vox_size)
@@ -41,8 +43,8 @@ print "Found dim of {0} for {1} pixels.".format(pdim,npix)
 # Constructed file names.
 fname_si = "{0}/vox_{1}_si.h5".format(fdir,rname)
 fname_bg = "{0}/vox_{1}_bg.h5".format(fdir,rname)
-fn_saver = "{0}/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
-fn_acc = "{0}/accuracy_{1}_pix_{2}_train_{3}.dat".format(fdir,rname,npix,ntrain_evts)
+fn_saver = "{0}/models/tfmdl_{1}_pix_{2}_train_{3}.ckpt".format(fdir,rname,npix,ntrain_evts)   # for saving trained network
+fn_acc = "{0}/acc/accuracy_{1}_pix_{2}_train_{3}.dat".format(fdir,rname,npix,ntrain_evts)
 
 # -----------------------------------------------------------------------------
 # Read in all the data.
@@ -73,11 +75,11 @@ while(ntrk < nsi_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_si.append(darr)
@@ -110,11 +112,11 @@ while(ntrk < nbg_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_bg.append(darr)
@@ -260,15 +262,35 @@ else:
 
 # Evaluate the performance.
 if(not training_run):
-    correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    print "On test signal data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_si[0:200], y_: lbl_test_si[0:200], keep_prob: 1.0})
-    print "On test background data:"
-    print sess.run(accuracy, feed_dict={x: dat_test_bg[0:200], y_: lbl_test_bg[0:200], keep_prob: 1.0})
 
+    # Evaluate the training data.
     if(not test_eval_only):
-        print "On training signal data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_si[0:200], y_: lbl_train_si[0:200], keep_prob: 1.0})
-        print "On training background data:"
-        print sess.run(accuracy, feed_dict={x: dat_train_bg[0:200], y_: lbl_train_bg[0:200], keep_prob: 1.0})
+
+        nevt = 0
+        acc_si = 0; acc_bg = 0
+        while(nevt < ntrain_evts):
+            nevts_i = batch_size
+            if(nevt > (ntrain_evts - batch_size)):
+                nevts_i = ntrain_evts - nevt
+            nevt_end = nevt + nevts_i
+            print "-- Evaluating training data for events {0} to {1}:".format(nevt,nevt_end)
+            acc_si += sess.run(accuracy, feed_dict={x: dat_train_si[nevt:nevt_end], y_: lbl_train_si[nevt:nevt_end], keep_prob: 1.0})*nevts_i
+            acc_bg += sess.run(accuracy, feed_dict={x: dat_train_bg[nevt:nevt_end], y_: lbl_train_bg[nevt:nevt_end], keep_prob: 1.0})*nevts_i
+            nevt += batch_size
+        print "On training signal data, accuracy = {0}".format(1.0*acc_si/ntrain_evts)
+        print "On training background data, accuracy = {0}".format(1.0*acc_bg/ntrain_evts)
+
+    # Evaluate the test data.
+    nevt = 0
+    acc_si = 0; acc_bg = 0
+    while(nevt < ntest_evts):
+        nevts_i = batch_size
+        if(nevt > (ntest_evts - batch_size)):
+            nevts_i = ntest_evts - nevt
+        nevt_end = nevt + nevts_i
+        print "-- Evaluating test data for events {0} to {1}:".format(nevt,nevt_end)
+        acc_si += sess.run(accuracy, feed_dict={x: dat_test_si[nevt:nevt_end], y_: lbl_test_si[nevt:nevt_end], keep_prob: 1.0})*nevts_i
+        acc_bg += sess.run(accuracy, feed_dict={x: dat_test_bg[nevt:nevt_end], y_: lbl_test_bg[nevt:nevt_end], keep_prob: 1.0})*nevts_i
+        nevt += batch_size
+    print "On test signal data, accuracy = {0}".format(1.0*acc_si/ntest_evts)
+    print "On test background data, accuracy = {0}".format(1.0*acc_bg/ntest_evts)
