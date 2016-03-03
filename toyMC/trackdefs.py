@@ -16,24 +16,26 @@ from math import *
 # -------------------------------------------------------------------------------------------------------
 
 # Output directories
-trk_outdir = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks";   # output directory for tracks
+trk_outdir = "/Users/jrenner/IFIC/dnn/tracks";
+#trk_outdir = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks";   # output directory for tracks
 
-trk_name = "dnn3d_NEXT100_si";  # name assigned to this run; will be used in naming the output files
-trk_bb = False;       # set to true to create "double-beta"-like tracks
-num_tracks = 50000;  # number of tracks to generate and/or fit
+trk_name = "dnn3d_test_si";  # name assigned to this run; will be used in naming the output files
+trk_bb = True;       # set to true to create "double-beta"-like tracks
+trk_genbb = True;     # for double-beta events, use genbb information
+num_tracks = 10;  # number of tracks to generate and/or fit
 
 Bfield = 0.0;      # applied magnetic field in Tesla
 MS0 = 13.6;        # multiple scattering parameter (should be 13.6)
 
 # Voxelization parameters
 vox_ext = 100;     # extent in x,y,z of voxelized track (in +/- directions): full allowed range is 2 * vox_ext
-vox_size = 10;      # voxel size
+vox_size = 2;      # voxel size
 vox_3d = True;    # output 3D voxels or 2D (x-y) projection
-vox_already = True;  # set to true if input tracks are already voxelized
+vox_already = False;  # set to true if input tracks are already voxelized
 vox_prev_size = 2;   # for already voxelized tracks, the size of voxelization
 
 # Energy parameters
-E_0 = 2.447+0.511; # initial energy in MeV
+E_0 = 2.4578+0.511; # initial energy in MeV
 eslice = 0.0025;     # slice energy in MeV
 E_tol = 1e-3;      # energy tolerance value (energy is considered to be 0 if less than this value)
 
@@ -89,7 +91,41 @@ def SigmaThetaMs(P,L):
     #print "SigmaThetaMs->  L={0} P={1} beta={2}, tms={3}".format(L,P,beta,tms)
     return tms
 
-# Read nevts from the file fgenbb.
-def readGenbbFile(fgenbb,nevts):
+# Read nevts from the file named fn_genbb.
+def readGenbbFile(fn_genbb):
 
-    # 
+    # Open the file.
+    fgenbb = open(fn_genbb,'r')
+    
+    # Read the header (skip 22 lines).
+    for nl in range(22): fgenbb.readline()
+    
+    # Read the events line and following blank line.
+    [e1,nevts] = fgenbb.readline().split()
+    fgenbb.readline()
+    
+    nevts = int(nevts)
+    print "Reading {0} events from file {1}".format(nevts,fn_genbb)
+    
+    # Read the particle information for each event.
+    p1px = []; p1py = []; p1pz = []
+    p2px = []; p2py = []; p2pz = []
+    for nevt in range(nevts):
+        
+        # Read the event number and number of particles (assume 2).
+        fgenbb.readline()
+        
+        # Read the particle momentum information.
+        [g1,px1,py1,pz1,t1] = fgenbb.readline().split()
+        [g2,px2,py2,pz2,t2] = fgenbb.readline().split()
+        p1px.append(px1); p1py.append(py1); p1pz.append(pz1)
+        p2px.append(px2); p2py.append(py2); p2pz.append(pz2)
+
+    # Convert to arrays of floats.
+    p1px = np.array(p1px).astype(float); p2px = np.array(p2px).astype(float)
+    p1py = np.array(p1py).astype(float); p2py = np.array(p2py).astype(float)
+    p1pz = np.array(p1pz).astype(float); p2pz = np.array(p2pz).astype(float)
+    
+    # Return the lists of particle momentum information.        
+    return (p1px,p1py,p1pz,p2px,p2py,p2pz)
+        
