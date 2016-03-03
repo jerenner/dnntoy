@@ -17,22 +17,22 @@ import numpy as np
 import tensorflow as tf
 
 fdir = "/home/jrenner/dnn/data"
-rname = "dnn3d_NEXT100_Paolina222_v5x5x5_r200x200x200"
+rname = "dnn3d_NEXT100_Paolina222_v2x2x2_r200x200x200"
 
-training_run = True;                           # run training step
+training_run = False;                           # run training step
 test_eval_only = False and (not training_run);  # only read test data (cannot be True while training)
     
 # Input variables
 vox_ext = 100
-vox_size = 5
+vox_size = 2
 nclass = 2
 
-num_batches = 50000 #2000
+num_batches = 1000 #2000
 batch_size = 100 #100
 print "Number of batches = {0}; batch size = {1}".format(num_batches,batch_size)
 
-ntrain_evts = 15000     # number of training evts per dataset
-ntest_evts = 5000      # number of test events per dataset
+ntrain_evts = 1500     # number of training evts per dataset
+ntest_evts = 500       # number of test events per dataset
 print "Number of training events = {0}; number of test events = {1}".format(ntrain_evts,ntest_evts)
 
 # Calculated parameters
@@ -75,11 +75,11 @@ while(ntrk < nsi_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_si.append(darr)
@@ -112,11 +112,11 @@ while(ntrk < nbg_evts):
       
     # x-z
     for xx,zz,ee in zip(xarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 1] += ee
+        darr[3*int(zz*pdim + xx) + 1] += ee
         
     # y-z
     for yy,zz,ee in zip(yarr,zarr,earr):
-        darr[3*int(yy*pdim + xx) + 2] += ee
+        darr[3*int(zz*pdim + yy) + 2] += ee
         
     darr *= 1./max(darr)
     dat_bg.append(darr)
@@ -269,14 +269,14 @@ if(not training_run):
         nevt = 0
         acc_si = 0; acc_bg = 0
         while(nevt < ntrain_evts):
-            nevts_i = 1000
-            if(nevt > (ntrain_evts - 1000)):
+            nevts_i = batch_size
+            if(nevt > (ntrain_evts - batch_size)):
                 nevts_i = ntrain_evts - nevt
             nevt_end = nevt + nevts_i
             print "-- Evaluating training data for events {0} to {1}:".format(nevt,nevt_end)
             acc_si += sess.run(accuracy, feed_dict={x: dat_train_si[nevt:nevt_end], y_: lbl_train_si[nevt:nevt_end], keep_prob: 1.0})*nevts_i
             acc_bg += sess.run(accuracy, feed_dict={x: dat_train_bg[nevt:nevt_end], y_: lbl_train_bg[nevt:nevt_end], keep_prob: 1.0})*nevts_i
-            nevt += 1000
+            nevt += batch_size
         print "On training signal data, accuracy = {0}".format(1.0*acc_si/ntrain_evts)
         print "On training background data, accuracy = {0}".format(1.0*acc_bg/ntrain_evts)
 
@@ -284,13 +284,13 @@ if(not training_run):
     nevt = 0
     acc_si = 0; acc_bg = 0
     while(nevt < ntest_evts):
-        nevts_i = 1000
-        if(nevt > (ntest_evts - 1000)):
+        nevts_i = batch_size
+        if(nevt > (ntest_evts - batch_size)):
             nevts_i = ntest_evts - nevt
         nevt_end = nevt + nevts_i
         print "-- Evaluating test data for events {0} to {1}:".format(nevt,nevt_end)
         acc_si += sess.run(accuracy, feed_dict={x: dat_test_si[nevt:nevt_end], y_: lbl_test_si[nevt:nevt_end], keep_prob: 1.0})*nevts_i
         acc_bg += sess.run(accuracy, feed_dict={x: dat_test_bg[nevt:nevt_end], y_: lbl_test_bg[nevt:nevt_end], keep_prob: 1.0})*nevts_i
-        nevt += 1000
+        nevt += batch_size
     print "On test signal data, accuracy = {0}".format(1.0*acc_si/ntest_evts)
     print "On test background data, accuracy = {0}".format(1.0*acc_bg/ntest_evts)

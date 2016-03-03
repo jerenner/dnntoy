@@ -88,3 +88,8 @@ def SigmaThetaMs(P,L):
 
     #print "SigmaThetaMs->  L={0} P={1} beta={2}, tms={3}".format(L,P,beta,tms)
     return tms
+
+# Read nevts from the file fgenbb.
+def readGenbbFile(fgenbb,nevts):
+
+    # 
