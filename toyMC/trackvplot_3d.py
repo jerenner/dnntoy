@@ -44,13 +44,13 @@ h5f = h5py.File("{0}/vox_{1}_{2}.h5".format(fnb_trk,trk_name,trk_startnum),'r');
 # Create num_tracks tracks.
 for ntrk in range(num_tracks):
     
-    logging.debug("-- Plotting voxelized track {0}\n".format(ntrk + trk_startnum));
+    print "-- Plotting voxelized track {0}\n".format(ntrk + trk_startnum);
 
     # Read in the track.
     trkmat = h5f['trk{0}'.format(ntrk + trk_startnum)];
-    varr_x = trkmat[0];
-    varr_y = trkmat[1];
-    varr_z = trkmat[2];
+    varr_x = trkmat[0]*vox_size;
+    varr_y = trkmat[1]*vox_size;
+    varr_z = trkmat[2]*vox_size;
     varr_c = trkmat[3]*1000;
         
     # Plot the 3D voxelized track.
