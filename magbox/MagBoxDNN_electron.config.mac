@@ -1,0 +1,29 @@
+
+### GEOMETRY (Xenon, Hydrogen, SeF6)
+/Geometry/MagBox/gas_name Xenon
+/Geometry/MagBox/pressure 15. bar
+/Geometry/MagBox/mag_intensity 0.0 tesla
+/Geometry/MagBox/max_step_size 1.0 mm
+
+
+### GENERATOR
+
+/Generator/SingleParticle/region CENTER
+/Generator/SingleParticle/particle e-
+/Generator/SingleParticle/min_energy 2447. keV
+/Generator/SingleParticle/max_energy 2447. keV
+
+
+### PHYSICS
+#/process/eLoss/fluct 0
+#/run/setCut 200.0 mm
+
+### VERBOSITIES
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+
+### JOB CONTROL
+#/nexus/persistency/outputFile tst.next
+/nexus/persistency/outputFile electron.next
