@@ -9,6 +9,7 @@ import numpy as np
 import scipy.integrate as integrate
 import random as rd
 import os
+import matplotlib.colors as mpcol
 from math import *
 
 # -------------------------------------------------------------------------------------------------------
@@ -19,7 +20,7 @@ from math import *
 trk_outdir = "/Users/jrenner/IFIC/dnn/tracks";
 #trk_outdir = "/data4/NEXT/users/jrenner/dnn/dnntoy/tracks";   # output directory for tracks
 
-trk_name = "dnn3d_test_si";  # name assigned to this run; will be used in naming the output files
+trk_name = "dnn3d_NEXT100_Paolina222_v2x2x2_r200x200x200_bg";  # name assigned to this run; will be used in naming the output files
 trk_bb = True;       # set to true to create "double-beta"-like tracks
 trk_genbb = True;     # for double-beta events, use genbb information
 num_tracks = 10;  # number of tracks to generate and/or fit
@@ -128,4 +129,29 @@ def readGenbbFile(fn_genbb):
     
     # Return the lists of particle momentum information.        
     return (p1px,p1py,p1pz,p2px,p2py,p2pz)
-        
+
+# A grayscale color map.
+# For each color 'red', 'green', 'blue', there is a 3-column table with
+# as many rows as necessary.
+# col 1 = x, must go from 0 to 1.0
+# col 2 = y0
+# col 3 = y1
+# From matplotlib doc: "For any input value z falling between x[i] and x[i+1], 
+#  the output value of a given color will be linearly interpolated between 
+#  y1[i] and y0[i+1]"
+cdict = {'red': ((0.0, 1.0, 1.0),
+                 (0.0, 0.85, 0.85),
+                 (1.0, 0.0, 0.0)),
+         'green': ((0.0, 1.0, 1.0),
+                   (0.0, 0.85, 0.85),
+                   (1.0, 0.0, 0.0)),
+         'blue': ((0.0, 1.0, 1.0),
+                  (0.0, 0.85, 0.85),
+                  (1.0, 0.0, 0.0))}
+#cdict = {'red': ((0.0, 1.0, 1.0),
+#                 (1.0, 0.0, 0.0)),
+#         'green': ((0.0, 1.0, 1.0),
+#                   (1.0, 0.0, 0.0)),
+#         'blue': ((0.0, 1.0, 1.0),
+#                  (1.0, 0.0, 0.0))}
+tmc_gs_cmap = mpcol.LinearSegmentedColormap('gs_cmap',cdict,256);
