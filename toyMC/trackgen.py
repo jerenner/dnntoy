@@ -15,6 +15,12 @@ Track output format:
     deltaE: the energy deposited in this hit
     
     All distances are in mm
+    
+To run with genbb, the number of the genbb file (num) must be specified as an
+input argument, and the file to be read will be located in 
+/path/to/trackgen.py/genbb/(trk_name)/Xe136_bb0nu.(num).genbb.  Genbb must
+have been run beforehand to output the correct number of files with the correct
+number of events in each (must match num_tracks from trackdefs.py).
 
 """
 import sys
@@ -35,10 +41,24 @@ debug = 0
 # Get the arguments, if any.
 # -----------------------------------------------------------------------------
 args = sys.argv;
-if(len(args) < 1):
-    print "Usage:\n\n python trackgen.py <start_event>";
+if(len(args) < 2):
+    print "Usage:\n\n python trackgen.py <start_event> (<genbb_file_num>)";
     exit();
 trk_startnum = int(args[1]);
+
+# Get the genbb file number to use for the distribution and read it in.
+if(trk_bb and trk_genbb):
+    if(len(args) < 3):
+        print "Usage:\n\n python trackgen.py <start_event> (<genbb_file_num>)";
+        exit();
+    trk_filenum = int(args[2])
+    fn_genbb = "{0}/genbb/{1}/Xe136_bb0nu.{2}.genbb".format(trk_outdir,trk_name,trk_filenum)
+    gbb_px0,gbb_py0,gbb_pz0,gbb_px1,gbb_py1,gbb_pz1 = readGenbbFile(fn_genbb)
+    
+    nevts = len(gbb_px1)
+    if(nevts != num_tracks):
+        print "ERROR: number of events ({0}) in file {1} does not match num_tracks ({2})".format(nevts,fn_genbb,num_tracks)
+        exit()
 
 # Create directories
 if(not os.path.isdir(trk_outdir)): os.mkdir(trk_outdir);
@@ -79,13 +99,33 @@ for ntrk in range(num_tracks):
         nelecs = 2;
 
     # Initialize the track.    
-    te_0 = 1.0*(E_0-pc_me_MeV)/nelecs;
-    tx_0 = 0.; ty_0= 0.; tz_0 = 0.;
-    costheta_i = rd.uniform(-1,1); sintheta_i = sqrt(1 - costheta_i**2);
-    phi_i = rd.uniform(0,2*pi); sinphi_i = sin(phi_i); cosphi_i = cos(phi_i);
-    ux_0 = sintheta_i*cosphi_i;
-    uy_0 = sintheta_i*sinphi_i;
-    uz_0 = costheta_i;
+    tx_0 = 0.; ty_0 = 0.; tz_0 = 0.; tx_1 = 0.; ty_1 = 0.; tz_1 = 0.;    
+    if(trk_bb and trk_genbb):
+        
+        # Use the momentum from genbb.
+        px0 = gbb_px0[ntrk]; py0 = gbb_py0[ntrk]; pz0 = gbb_pz0[ntrk];
+        px1 = gbb_px1[ntrk]; py1 = gbb_py1[ntrk]; pz1 = gbb_pz1[ntrk];
+        
+        pmag0s = px0**2 + py0**2 + pz0**2; pmag1s = px1**2 + py1**2 + pz1**2;
+        pmag0 = sqrt(pmag0s); pmag1 = sqrt(pmag1s);
+        
+        te_0 = sqrt(pmag0s + pc_me_MeV**2) - pc_me_MeV;
+        te_1 = sqrt(pmag1s + pc_me_MeV**2) - pc_me_MeV;
+        print "-- GENBB: E1 = {0}, E2 = {1}, Etot = {2}".format(te_0,te_1,te_0+te_1); 
+        
+        ux_0 = px0/pmag0; uy_0 = py0/pmag0; uz_0 = pz0/pmag0;
+        ux_1 = px1/pmag1; uy_1 = py1/pmag1; uz_1 = pz1/pmag1;
+        
+    else:
+        
+        # Use a fixed energy and random direction (opposite direction for second electron if there is one).
+        te_0 = 1.0*(E_0-pc_me_MeV)/nelecs; te_1 = te_0
+        costheta_i = rd.uniform(-1,1); sintheta_i = sqrt(1 - costheta_i**2);
+        phi_i = rd.uniform(0,2*pi); sinphi_i = sin(phi_i); cosphi_i = cos(phi_i);
+        ux_0 = sintheta_i*cosphi_i; ux_1 = -ux_0;
+        uy_0 = sintheta_i*sinphi_i; uy_1 = -uy_0;
+        uz_0 = costheta_i; uz_1 = -uz_0;
+        
     #print "Initial direction is ({0},{1},{2}); perpendicular velocity is: {3}".format(ux_0,uy_0,uz_0,sqrt(ux_0**2 + uy_0**2));
 
     for nelec in range(nelecs):
@@ -96,11 +136,13 @@ for ntrk in range(num_tracks):
         trk_tE = []; trk_tdeltaE = []; trk_tdeltaX = [];
         
         # Set the initial position and energy.
-        te = te_0;
-        tx = tx_0; ty = ty_0; tz = tz_0;
         if(nelec == 1):
-            ux = -ux_0; uy = -uy_0; uz = -uz_0;
+            te = te_1;
+            tx = tx_1; ty = ty_1; tz = tz_1;
+            ux = ux_1; uy = uy_1; uz = uz_1;
         else:
+            te = te_0;
+            tx = tx_0; ty = ty_0; tz = tz_0;
             ux = ux_0; uy = uy_0; uz = uz_0;
     
         # Continue until 0 energy.

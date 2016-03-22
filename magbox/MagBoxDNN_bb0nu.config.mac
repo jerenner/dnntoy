@@ -1,0 +1,26 @@
+
+### GEOMETRY (Xenon, Hydrogen, SeF6)
+/Geometry/MagBox/gas_name Xenon
+/Geometry/MagBox/pressure 15. bar
+/Geometry/MagBox/mag_intensity 0.0 tesla
+/Geometry/MagBox/max_step_size 1.0 mm
+
+
+### GENERATOR
+/Generator/Decay0Interface/inputFile /data4/NEXT/NEXTNEW/decay0/Xe136_bb0nu/Xe136_bb0nu_decay0.0.txt
+/Generator/Decay0Interface/region CENTER
+
+
+### PHYSICS
+#/process/eLoss/fluct 0
+#/run/setCut 200.0 mm
+
+### VERBOSITIES
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+
+### JOB CONTROL
+#/nexus/persistency/outputFile tst.next
+/nexus/persistency/outputFile bb0nu.next

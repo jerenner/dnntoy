@@ -18,7 +18,7 @@ from trackdefs import *
 
 from abc import ABCMeta, abstractmethod
 
-grdcol = 0.98;
+grdcol = 0.99;
 
 # -----------------------------------------------------------------------------
 # Get the arguments, if any.
@@ -44,26 +44,32 @@ h5f = h5py.File("{0}/vox_{1}_{2}.h5".format(fnb_trk,trk_name,trk_startnum),'r');
 # Create num_tracks tracks.
 for ntrk in range(num_tracks):
     
-    logging.debug("-- Plotting voxelized track {0}\n".format(ntrk + trk_startnum));
+    print "-- Plotting voxelized track {0}\n".format(ntrk + trk_startnum);
 
     # Read in the track.
     trkmat = h5f['trk{0}'.format(ntrk + trk_startnum)];
-    varr_x = trkmat[0];
-    varr_y = trkmat[1];
-    varr_z = trkmat[2];
+    varr_x = trkmat[0]*vox_size;
+    varr_y = trkmat[1]*vox_size;
+    varr_z = trkmat[2]*vox_size;
     varr_c = trkmat[3]*1000;
         
     # Plot the 3D voxelized track.
     fig = plt.figure(1);
     fig.set_figheight(5.0);
-    fig.set_figwidth(5.0);
+    fig.set_figwidth(8.0);
 
     ax1 = fig.add_subplot(111,projection='3d');
-    s1 = ax1.scatter(varr_x,varr_y,varr_z,marker='s',s=vox_size,linewidth=0.0,c=varr_c,cmap=plt.get_cmap('gray_r'),vmin=0.0,vmax=max(varr_c));
+    s1 = ax1.scatter(varr_x,varr_y,varr_z,marker='s',s=4*vox_size,linewidth=0.0,c=varr_c,cmap=tmc_gs_cmap,vmin=0.0,vmax=max(varr_c));
     s1.set_edgecolors = s1.set_facecolors = lambda *args:None;  # this disables automatic setting of alpha relative of distance to camera
-    ax1.set_xlim([0, 2 * vox_ext]);
-    ax1.set_ylim([0, 2 * vox_ext]);
-    ax1.set_zlim([0, 2 * vox_ext]);
+    min_x = min(varr_x); max_x = max(varr_x)
+    min_y = min(varr_y); max_y = max(varr_y)
+    min_z = min(varr_z); max_z = max(varr_z)
+    ax1.set_xlim([0.8*min_x, 1.25*max_x])
+    ax1.set_ylim([0.8*min_y, 1.25*max_y])
+    ax1.set_zlim([0.8*min_z, 1.25*max_z])
+#    ax1.set_xlim([0, 2 * vox_ext]);
+#    ax1.set_ylim([0, 2 * vox_ext]);
+#    ax1.set_zlim([0, 2 * vox_ext]);
     ax1.set_xlabel("x (mm)");
     ax1.set_ylabel("y (mm)");
     ax1.set_zlabel("z (mm)");
