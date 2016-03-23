@@ -39,7 +39,8 @@ if(not os.path.isdir("{0}/plt".format(fnb_trk))):
 vdim = int(round(2 * vox_ext / vox_size));
 
 # Read in the h5py file.
-h5f = h5py.File("{0}/vox_{1}_{2}.h5".format(fnb_trk,trk_name,trk_startnum),'r');
+h5f = h5py.File("{0}/vox_{1}.h5".format(fnb_trk,trk_name),'r');
+#h5f = h5py.File("{0}/vox_{1}_{2}.h5".format(fnb_trk,trk_name,trk_startnum),'r');
 
 # Create num_tracks tracks.
 for ntrk in range(num_tracks):
@@ -55,10 +56,10 @@ for ntrk in range(num_tracks):
         
     # Plot the 3D voxelized track.
     fig = plt.figure(1);
-    fig.set_figheight(5.0);
-    fig.set_figwidth(5.0);
+    fig.set_figheight(10.0);
+    fig.set_figwidth(15.0);
 
-    ax1 = fig.add_subplot(111,projection='3d');
+    ax1 = fig.add_subplot(221,projection='3d');
     s1 = ax1.scatter(varr_x,varr_y,varr_z,marker='s',s=vox_size,linewidth=0.0,c=varr_c,cmap=plt.get_cmap('gray_r'),vmin=0.0,vmax=max(varr_c));
     s1.set_edgecolors = s1.set_facecolors = lambda *args:None;  # this disables automatic setting of alpha relative of distance to camera
     ax1.set_xlim([0, 2 * vox_ext]);
@@ -84,7 +85,31 @@ for ntrk in range(num_tracks):
 
     cb1 = plt.colorbar(s1);
     cb1.set_label('Energy (keV)');
-        
+
+    # Create the x-y projection.
+    ax2 = fig.add_subplot(222);
+    ax2.plot(varr_x,varr_y,'.',color='black');
+    ax2.set_xlabel("x (mm)");
+    ax2.set_ylabel("y (mm)");
+    #ax2.set_xlim([0, 2 * vox_ext]);
+    #ax2.set_ylim([0, 2 * vox_ext]);
+      
+    # Create the x-z projection.
+    ax3 = fig.add_subplot(223);
+    ax3.plot(varr_x,varr_z,'.',color='black');
+    ax3.set_xlabel("x (mm)");
+    ax3.set_ylabel("z (mm)");    
+    #ax3.set_xlim([0, 2 * vox_ext]);
+    #ax3.set_ylim([0, 2 * vox_ext]);
+ 
+    # Create the y-z projection.
+    ax4 = fig.add_subplot(224);
+    ax4.plot(varr_y,varr_z,'.',color='black');
+    ax4.set_xlabel("y (mm)");
+    ax4.set_ylabel("z (mm)");
+    #ax4.set_xlim([0, 2 * vox_ext]);
+    #ax4.set_ylim([0, 2 * vox_ext]);
+
     # Show and/or print the plot.
     if(plt_print):
         fn_plt = "{0}/plt/plt_{1}_{2}.{3}".format(fnb_trk,trk_name,ntrk + trk_startnum,plt_imgtype);
