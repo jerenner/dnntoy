@@ -18,7 +18,7 @@ from trackdefs import *
 
 from abc import ABCMeta, abstractmethod
 
-grdcol = 0.98;
+grdcol = 0.99;
 
 # -----------------------------------------------------------------------------
 # Get the arguments, if any.
@@ -56,15 +56,29 @@ for ntrk in range(num_tracks):
         
     # Plot the 3D voxelized track.
     fig = plt.figure(1);
+<<<<<<< HEAD
     fig.set_figheight(10.0);
     fig.set_figwidth(15.0);
 
     ax1 = fig.add_subplot(221,projection='3d');
     s1 = ax1.scatter(varr_x,varr_y,varr_z,marker='s',s=vox_size,linewidth=0.0,c=varr_c,cmap=plt.get_cmap('gray_r'),vmin=0.0,vmax=max(varr_c));
+=======
+    fig.set_figheight(5.0);
+    fig.set_figwidth(8.0);
+
+    ax1 = fig.add_subplot(111,projection='3d');
+    s1 = ax1.scatter(varr_x,varr_y,varr_z,marker='s',s=4*vox_size,linewidth=0.0,c=varr_c,cmap=tmc_gs_cmap,vmin=0.0,vmax=max(varr_c));
+>>>>>>> c71a3c2daec77e1b57304b1fb6d97ce7745ce37b
     s1.set_edgecolors = s1.set_facecolors = lambda *args:None;  # this disables automatic setting of alpha relative of distance to camera
-    ax1.set_xlim([0, 2 * vox_ext]);
-    ax1.set_ylim([0, 2 * vox_ext]);
-    ax1.set_zlim([0, 2 * vox_ext]);
+    min_x = min(varr_x); max_x = max(varr_x)
+    min_y = min(varr_y); max_y = max(varr_y)
+    min_z = min(varr_z); max_z = max(varr_z)
+    ax1.set_xlim([0.8*min_x, 1.25*max_x])
+    ax1.set_ylim([0.8*min_y, 1.25*max_y])
+    ax1.set_zlim([0.8*min_z, 1.25*max_z])
+#    ax1.set_xlim([0, 2 * vox_ext]);
+#    ax1.set_ylim([0, 2 * vox_ext]);
+#    ax1.set_zlim([0, 2 * vox_ext]);
     ax1.set_xlabel("x (mm)");
     ax1.set_ylabel("y (mm)");
     ax1.set_zlabel("z (mm)");
