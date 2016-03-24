@@ -187,8 +187,11 @@ def net_setup():
     logging.info("Setting up tf training variables...")
     cross_entropy = -tf.reduce_sum(y_*tf.log(y_out + 1.0e-9))
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
+    gstep = tf.Variable(0, trainable=False)
+    lrate = tf.train.exponential_decay(opt_lr, gstep,
+                                           opt_ndecayepochs*batches_per_epoch, opt_decaybase, staircase=True)
     #train_step = tf.train.MomentumOptimizer(learning_rate=opt_lr,momentum=opt_mom).minimize(cross_entropy)
-    train_step = tf.train.AdamOptimizer(learning_rate=opt_lr,epsilon=opt_eps).minimize(cross_entropy)
+    train_step = tf.train.AdamOptimizer(learning_rate=opt_lr,epsilon=opt_eps).minimize(cross_entropy,global_step=gstep)
     #train_step = tf.train.GradientDescentOptimizer(0.3).minimize(cross_entropy)
 
     logging.info("Setting up session...")

@@ -7,7 +7,7 @@ import logging
 datdir = "/home/jrenner/dnn/data"                          # the base data directory
 dname = "vox_dnn3d_NEXT100_Paolina222_v10x10x10_r200x200x200" # the data name
 rdir = "/home/jrenner/dnn/run"                             # the run directory
-rname = "dnn3d_NEXT100_Paolina222_v10x10x10_r200x200x200"     # the run name
+rname = "dnn3d_NEXT100_Paolina222_v10x10x10_r200x200x200_test"     # the run name
 
 read_googlenet = False                        # set to true only if using the GoogLeNet
 train_init = True                             # if true, train from net with standard pre-training; if false, read in a previously trained net
@@ -27,6 +27,8 @@ batch_size = 200       # training batch size
 opt_lr = 1.0e-4        # optimizer learning rate
 opt_eps = 1.0e-6       # optimizer epsilon (for AdamOptimizer)
 opt_mom = 0.9          # optimizer momentum
+opt_decaybase = 0.1    # multiplicative factor for learning rate decay
+opt_ndecayepochs = 10  # decay interval: apply decay by a factor of opt_decaybase every opt_ndecayepochs epochs
 
 log_to_file = True         # set to True to output log information to a file rather than the console
 logging_lvl = logging.INFO  # logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL

@@ -82,10 +82,10 @@ if(ptype == "summary"):
 
     # Read in the results.
     accmat = np.loadtxt(fn_summary)
-    acc_trs = accmat[:,1]
-    acc_trb = accmat[:,2]
-    acc_vls = accmat[:,5]
-    acc_vlb = accmat[:,6]
+    acc_trs = accmat[:,1]*100.
+    acc_trb = accmat[:,2]*100.
+    acc_vls = accmat[:,5]*100.
+    acc_vlb = accmat[:,6]*100.
     acc_itr = [] 
     for iit in range(len(acc_trs)): acc_itr.append(iit)
 
@@ -100,6 +100,7 @@ if(ptype == "summary"):
     ax1.set_xlabel("epoch")
     ax1.set_ylabel("accuracy")
     ax1.set_title("")
+    ax1.set_ylim([0, 100]);
     #ax1.set_xscale('log')
 
     lnd = plt.legend(loc=4,frameon=False,handletextpad=0)
@@ -110,6 +111,7 @@ if(ptype == "summary"):
     ax2.set_xlabel("epoch")
     ax2.set_ylabel("accuracy")
     ax2.set_title("")
+    ax2.set_ylim([0, 100]);
     #ax2.set_xscale('log')
 
     lnd = plt.legend(loc=4,frameon=False,handletextpad=0)
