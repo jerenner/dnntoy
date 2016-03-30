@@ -20,11 +20,44 @@ E-mail: \email{correspodingauthor@ific.uv.es}}
 
 \abstract{Abstract}
 
-\keywords{Neutrinoless double beta decay; deep neural networks; magnetic field; TPC; high-pressure xenon chambers;  Xenon; NEXT-100 experiment}
+\keywords{Neutrinoless double beta decay; deep neural networks; TPC; high-pressure xenon chambers;  Xenon; NEXT-100 experiment}
 
 \begin{document}
 
 \section{Introduction}\label{sec:intro}
+\noindent Here introduce NEXT, track reconstruction in xenon TPCs, and discuss the difference between a signal and background event.
+
+\section{Simulation methods}
+Describe the different simulations run.
+
+\subsection{Simple Monte Carlo}
+Describe the toy MC (dE/dx, Gaussian MS) and voxelization procedure.
+
+\subsection{GEANT Box Monte Carlo}
+Describe the MAGBOX simulation and Paolina voxelization.
+
+\subsection{NEXT-100 Monte Carlo}
+Describe the NEXT-100 Monte Carlo.  Note that out of the three Monte Carlo simulations discussed, this simulation most closely matches the actual experiment, though it still operates
+directly on Monte Carlo hits and is still not a full simulation with realistic track reconstruction.
+
+\section{Topological Analysis}
+Describe the standard topological analysis procedure applied to the NEXT-100 data.
+
+\section{Event classification with a deep neural network (DNN)}
+\subsection{Classification procedure}
+Describe the data preparation and DNN analysis procedure (input images to Caffe via DIGITS).  Note selection of the GoogLeNet and the use of three 2D projections.
+
+\subsection{Analysis of NEXT-100 Monte Carlo}
+Discuss the results obtained with GoogLeNet for NEXT-100 Monte Carlo, to be compared with the topological analysis.  Show the cases of 2x2x2 and 10x10x10 voxels.  This comparison is
+the main result of the paper.
+
+\subsection{Evaluating the DNN analysis}
+Here we show the DNN analysis for the different Monte Carlo runs, explaining how we arrived at the conclusion that delta rays and energy fluctuations are mainly responsible for the
+loss of accuracy.
+
+\section{Conclusions}
+DNN analysis with just three projections seems to be capable of outperforming conventional analysis.  Discuss future plans to develop an optimized DNN analysis and speculate
+on possible improvements.
 
 %\begin{figure}[!htb]
 %\centering
