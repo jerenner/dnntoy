@@ -137,12 +137,47 @@ intense neural networks with many inner layers has become feasible.  These neura
 amounts of data exhitibing a vast array of features.  This idea of ``deep learning'' has been applied to yield outstanding performance in solving difficult problems such as image and 
 speech recognition.
 
-% Details of GoogLeNet
-In this study ... (describe the details of convolutional layers and GoogLeNet)
+% Details of GoogLeNet; what is a CNN
+Neural networks consist of layers of neurons which compute an output value based on one or several input values.  The output $z$ is a function of the weighted sum of the inputs $x_{i}$ plus a bias variable $b$, i.e. $z = f(\sum_{i}w_{i}x_{i} + b)$, where $f$ is called the activation function and $w_{i}$ are the weights of the neuron, one for each input.  The idea is that
+with several layers of many neurons connected together, the values of the final (``output'') layer of neurons will correspond to the solution of some problem given the values input to the
+initial layer (called the ``input'' layer).  The weights and biases of all neurons in the network together determine the final output value, and so the network must be trained (the weights and
+biases must be adjusted) so that the network solves the correct problem.  This is done by using a training dataset, and for each training event, presenting input data to the network, 
+examining its resulting output, and adjusting the weights and biases of the network in a manner that minimizes the discrepancy between the output of the final layer $a$ and the expected 
+output $y$.  This adjustment procedure is done by computing a cost function which depends on the actual and expected outputs and quantifies the discrepancy between them, computing 
+the gradients of the cost function with respect to the weights and biases in all neurons, and changing the weights and biases in a manner that minimizes the cost function.  After many training
+iterations, the weights and biases in the network will ideally have converged to values that not only yield the expected output when the network is presented with an event from the training
+dataset, but also yields the expected output when presented with similar events not used in training.  The technical
+details behind implementing such a scheme mathematically will not be given here but are discussed at length in \cite{Nielsen_2016}.
+
+Recently, multi-layer convolutional neural networks (CNNs) have been identified as a powerful technique for image recognition problems.  These neural networks consist of $m\times n$
+convolutional layers - layers of neurons that share a common set of $m\times n$ weights and a bias.  The set of 
+weights $+$ biases is called a filter or kernel, and this filter is combined in a multiplicative sum (a convolution) with an $m\times n$ subset of input neurons to give an output value.  The filter
+is moved along the image, each time covering a different $m\times n$ subset of input neurons, and the set of output values corresponding to a single filter is called a feature map.  With this
+strategy, the net can be trained to identify specific features of an image, and further convolutional layers can be used to analyze the higher-level features encoded in the feature maps output
+from previous layers.  Often to reduce the amount of computation and neurons present in deeper layers, max-pooling operations are performed, in which the neuron with maximum output
+value in an $m\times n$ window (or ``pool'') is selected, and all others in the pool are discarded.  Such an operation performed on a layer of neurons leads to a new layer of reduced size.
+A deep CNN may be constructed from a series of several such convolutional operations and max-pooling operations, along with more conventional fully-connected layers, in which all neurons 
+output from the previous layer are connected to the input of each neuron in the fully-connected layer, and other operations not discussed here (see figure \ref{fig.generalnn} for a general 
+schematic).
+
+\begin{figure}[!htb]
+	\centering
+	\includegraphics[scale = 0.6]{fig/general_nn.pdf}
+	\caption{Schematic of a deep convolutional neural network for 2-category classification.  The input layer consists of the pixel intensities of an image, possibly in multiple color channels.  The 
+		hidden layers consist of several different operations performed on the input neurons - this example shows a 3x3 convolution followed by a 3x3 max-pooling operation, with the resulting 
+		neurons input to a fully-connected layer which feeds the two neurons in the output layer.  Rather than reading the values of the activation functions of
+		the two neurons in the output layer, the values are converted to two values in a normalized exponential distribution.  These values can then be interpreted as probabilities of classification as
+		signal or background.} \label{fig.generalnn}
+\end{figure}
+
+In this initial study, we make use of the GoogLeNet \cite{Googlenet}, which is a sophisticated 22-layers-deep convolutional network designed for image recognition.  As GoogLeNet was
+designed to classify and identify a wide range of features in a full-color images, a more suitable network is likely to exist for our specific problem of classifying particle tracks based on
+topology.  While further exploration of DNN architecture is essential to understanding the problem fully, our main goal in this study will be to show that DNNs can ``learn'' to classify 
+NEXT events as signal or background better than previously developed conventional analysis methods.
 
 \section{Event classification with a DNN}
 Here we investigate the performance of a DNN in classifying events into two categories, ``signal'' and ``background,'' and compare the results to the conventional analysis described in
-section \ref{ssec:TopologicalAnalysis}.  We chose to use the GoogLeNet \cite{Googlenet} DNN for this initial study, as its implementation was readily available in the Caffe \cite{jia2014caffe}
+section \ref{ssec:TopologicalAnalysis}.  We chose to use the GoogLeNet DNN for this initial study, as its implementation was readily available in the Caffe \cite{jia2014caffe}
 deep learning framework along with an interface, DIGITS \cite{DIGITS}, which allows for fast creation of image datasets and facilitates their input to several DNN models.  For each simulated
 dataset, GoogLeNet was trained on several tens of thousands of input events on a single GPU (either a GeForce GTX TITAN or GeForce GTX TITAN X, depending on the dataset), and several
 thousand additional events as validation.  Each event was input to the net as a .png image consisting of three
@@ -159,7 +194,7 @@ shown in figure \ref{fig.exampleProjs}.
 \subsection{Analysis of NEXT-100 Monte Carlo}\label{ssec:NEXTMCanalysis}
 To compare the ability of the DNN to classify events directly with the performance of the topological analysis of section \ref{ssec:TopologicalAnalysis}, we consider NEXT-100 Monte Carlo 
 events that have passed all cuts (1-6) described in section \ref{ssec:NEXT100MC}.  The GoogLeNet DNN was trained on 30000 such events (15000 signal and 15000 background) over 30 epochs, 
-and an independent set of 12000 (6000 signal and 6000 background) events was used as a test dataset.  Because these were the exact same events as those used in the previous
+and an independent set of 6000 (3000 signal and 3000 background) events was used as a test dataset.  Because these were the exact same events as those used in the previous
 topological analysis, the classification into signal and background from both analyses can be compared directly.  The results are shown in table \ref{tbl.DNNcomparison}.  The DNN
 analysis performs better than the conventional analysis, but there is still potential room for improvement.  
 	
