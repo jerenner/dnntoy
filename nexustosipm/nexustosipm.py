@@ -1,8 +1,4 @@
 from   __future__         import print_function
-from   keras.optimizers   import SGD, Nadam
-from   keras.models       import Sequential, Model
-from   keras.layers       import Input, Dense, Activation, Convolution2D, AveragePooling2D, MaxPooling2D, merge, Reshape, Flatten, Dropout
-from   keras              import callbacks
 from   matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
 import tables            as tb
@@ -11,23 +7,27 @@ import copy
 import h5py
 import sys
 
-# Range limits from extraction of Geant4-simulated events.
-NX = 200
-NY = 200
-NZ = 200
+infname = '/home/jrenner/analysis/MC/descape/vox_dnn_Xe_SE_7bar_descape_2x2x2.h5'
+outfname = 'MC_training_evts.h5'
+Ntrks = 2
 
-# Projection voxel sizes in mm
-vSizeX = 1
-vSizeY = 1
+vox_ext = 500
+vox_sizeX = 2
+vox_sizeY = 2
+vox_sizeZ = 2
+
+# Slices: number of x and y values.
+NX = (vox_ext/vox_sizeX)
+NY = (vox_ext/vox_sizeY)
 
 # The slice width, in Geant4 voxels
-slice_width = 2.
+slice_width = 5
 
 # Range limit in x and y for slices (assuming a square range), in voxels
-RNG_LIM = 200
+RNG_LIM = vox_ext
 
 # SiPM plane geometry definition
-nsipm = 20             # number of SiPMs in response map (a 10x10 response map covers a 100x100 range)
+nsipm = 50             # number of SiPMs in response map (a 10x10 response map covers a 100x100 range)
 sipm_pitch = 10.       # distance between SiPMs
 sipm_edge_width = 5.   # distance between SiPM and edge of board
 
@@ -35,11 +35,14 @@ sipm_edge_width = 5.   # distance between SiPM and edge of board
 # Variables for computing an EL point location
 xlen = 2*sipm_edge_width + (nsipm-1)*sipm_pitch       # (mm) side length of rectangle
 ylen = 2*sipm_edge_width + (nsipm-1)*sipm_pitch       # (mm) side length of rectangle
-wbin = 2.0                                            # (mm) bin width
+wbin = 3.0                                            # (mm) bin width
 
 # Compute the positions of the SiPMs
 pos_x = np.ones(nsipm**2)*sipm_edge_width + (np.ones(nsipm*nsipm)*range(nsipm**2) % nsipm)*sipm_pitch
 pos_y = np.ones(nsipm**2)*sipm_edge_width + np.floor(np.ones(nsipm*nsipm)*range(nsipm**2) / nsipm)*sipm_pitch
+
+# -----------------------------------------------------------------------------------------------------------
+# SiPM parameterization
 
 # Number of time bins
 n_tbins = 2
@@ -104,11 +107,11 @@ def slice_evt(hfile,nevt,zwidth):
     
     # Create slices of width zwidth beginning fom zmin.
     nslices = int(np.ceil((zmax - zmin)/zwidth))
-    #print "{0} slices for event {1}".format(nslices,nevt)
+    print("{} slices for event {} with zmax = {} and zmin = {}".format(nslices,nevt,zmax,zmin))
     
     slices = np.zeros([nslices,NY,NX])
     energies = np.zeros(nslices)
-    for x,y,z,e in zip(htrk[0],htrk[1],htrk[2],htrk[3]):
+    for x,y,z,e in zip(htrk[0].astype('int'),htrk[1].astype('int'),htrk[2].astype('int'),htrk[3]):
         
         # Add the energy at (x,y,z) to the (x,y) value of the correct slice.
         islice = int((z - zmin)/zwidth)
@@ -123,23 +126,36 @@ def slice_evt(hfile,nevt,zwidth):
     # Return the list of slices and energies.
     return [energies, slices]
 
+# Open the file containing the voxels.
+voxfile = h5py.File(infname,'r')
+
+# Open a file to which the events will be saved.
+h5maps = tb.open_file(outfname, 'w')
+filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
+atom_m = tb.Atom.from_dtype(np.dtype('float32'))
+maparray = h5maps.create_earray(h5maps.root, 'maps', atom_m, (0, nsipm, nsipm, nsipm), filters=filters)
+atom_e = tb.Atom.from_dtype(np.dtype('float32'))
+earray = h5maps.create_earray(h5maps.root, 'energies', atom_e, (0, nsipm), filters=filters)
 
 xrng = []; yrng = []   # x- and y-ranges
 nspevt = []            # number of slices per event
 slices_x = []; slices_y = []; slices_e = []   # slice arrays
 for ee in range(Ntrks):
 
-    en_evt = sum(en)    
-
-    if(ee % int(Ntrks/100) == 0):
+    if(ee % int(Ntrks/100 + 1) == 0):
         print("Slicing event {0}".format(ee))
         
     # Slice the event.
-    en,sl = slice_evt(h5f,ee,slice_width)
+    en,sl = slice_evt(voxfile,ee,slice_width)
     nslices = len(en)
     nspevt.append(nslices)
+
+    # Calculate the total event energy.
+    en_evt = sum(en)
     
-    # Get information about each slice.
+    # Create a 2D sipm map from each slice and add it to the final 3D matrix.
+    valid_evt = True
+    sipm_matrix = np.zeros([nsipm,nsipm,nsipm]).astype('float32')
     for ss in range(nslices):
         
         # Don't include 0-energy slices.
@@ -159,37 +175,42 @@ for ee in range(Ntrks):
         
         # Save the slice if within range.
         if((xmax - xmin) >= RNG_LIM-1 or (ymax - ymin) >= RNG_LIM-1):
-            print("Range of {0} for event {1} slice {2}, energy {3}; slice not included".format(xmax-xmin,ee,ss,en[ss]))
-        else:
+            print("Range of {0} for event {1} slice {2}, energy {3}; event not included".format(xmax-xmin,ee,ss,en[ss]))
+            valid_evt = False
+        elif(valid_evt):
             
             # Center the slices about RNG_LIM/2.
             #x0 = int((xmin + xmax)/2. - RNG_LIM/2.)
             #y0 = int((ymin + ymax)/2. - RNG_LIM/2.)
             #nzx -= x0; nzy -= y0
             
-            # Create the slice array.
-            snum = len(slices_x)
-            slices_x.append(nzx); slices_y.append(nzy); slices_e.append(nze)
-            carr = np.array([nzx, nzy, nze])
-            
             # Create the corresponding SiPM map.
-            sipm_map = np.zeros(nsipm*nsipm)
+            sipm_map = np.zeros(nsipm*nsipm).astype('float32')
             for xpt,ypt,ept in zip(nzx,nzy,nze):
 
                 # Compute the distances and probabilities.  Add the probabilities to the sipm map.
-                rr = np.array([np.sqrt((xi - xpt)**2 + (yi - ypt)**2) for xi,yi in zip(pos_x,pos_y)])
+                rr = np.array([np.sqrt((xi - xpt*vox_sizeX)**2 + (yi - ypt*vox_sizeY)**2) for xi,yi in zip(pos_x,pos_y)])
                 probs = 0.5*(sipm_par(0, rr) + sipm_par(1, rr))
                 sipm_map += probs*ept
 
             # Multiply the SiPM map by a factor proportional to the slice energy.
             sipm_map *= en[ss]/en_evt
+            print("slice {} with energy {}".format(ss,en[ss]))
+
+            # Reshape the map and add it to the list of maps.
+            sipm_map = sipm_map.reshape(nsipm,nsipm)
+            sipm_matrix[:,:,ss] += sipm_map
 
         # Normalize the probability map, and set sigma = 1.
         #sipm_map -= np.mean(sipm_map)
         #sipm_map /= np.std(sipm_map)
             
-        # Save the slice and the SiPM map to an HDF5 file.
-        h5slices.create_dataset("slice{0}".format(snum),data=carr)
-        h5slices.create_dataset("sipm{0}".format(snum),data=sipm_map)
-            
-h5slices.close()
+        # Save the SiPM map to an HDF5 file.
+        if(valid_evt): 
+            envector = np.zeros(nsipm)
+            envector[0:len(en)] += en
+            maparray.append([sipm_matrix])
+            earray.append([envector])
+
+voxfile.close()
+h5maps.close()
