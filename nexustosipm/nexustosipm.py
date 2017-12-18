@@ -6,19 +6,55 @@ import numpy             as np
 import copy
 import h5py
 import sys
+import argparse
 
-infname = '/home/jrenner/analysis/MC/descape/vox_dnn_Xe_SE_7bar_descape_2x2x2.h5'
-outfname = 'MC_training_evts.h5'
-Ntrks = 2
+def get_parser(args=None):
+    parser = argparse.ArgumentParser(description='Script to produce HDF5 files')
+    parser.add_argument('-j','--jobs',
+                        action='store',
+                        help='jobs',
+                        required='True')
+    parser.add_argument('-i','--ijob',
+                        action='store',
+                        help='job number',
+                        required='True')
+    parser.add_argument('-n','--nevts',
+                        action='store',
+                        help='number of events',
+                        required='True')
+    parser.add_argument('-f','--ifile',
+                        action='store',
+                        help='input file',
+                        required='True')
 
+    return parser
+
+
+#get options
+args = get_parser().parse_args()
+opts = vars(args) # dict
+
+jobs = int(args.jobs)
+ijob = int(args.ijob)
+nevts = int(args.nevts)
+infname = args.ifile
+outfname = "{}_out_{}.h5".format(infname.split('.')[0],ijob)
+
+# Determine the first and last event for this job.
+evtsperjob = int(nevts/jobs)
+nievt = ijob*evtsperjob
+nfevt = (ijob+1)*evtsperjob
+if(nfevt > nevts or (ijob + 1 == jobs)): nfevt = nevts
+
+## Initial setup configuration.
 vox_ext = 500
 vox_sizeX = 2
 vox_sizeY = 2
 vox_sizeZ = 2
 
 # Slices: number of x and y values.
-NX = (vox_ext/vox_sizeX)
-NY = (vox_ext/vox_sizeY)
+NX = int(vox_ext/vox_sizeX)
+NY = int(vox_ext/vox_sizeY)
 
 # The slice width, in Geant4 voxels
 slice_width = 5
@@ -140,9 +176,9 @@ earray = h5maps.create_earray(h5maps.root, 'energies', atom_e, (0, nsipm), filte
 xrng = []; yrng = []   # x- and y-ranges
 nspevt = []            # number of slices per event
 slices_x = []; slices_y = []; slices_e = []   # slice arrays
-for ee in range(Ntrks):
+for ee in range(nievt,nfevt,1):
 
-    if(ee % int(Ntrks/100 + 1) == 0):
+    if(ee % int((nfevt-nievt)/100 + 1) == 0):
         print("Slicing event {0}".format(ee))
         
     # Slice the event.
@@ -193,6 +229,9 @@ for ee in range(Ntrks):
                 probs = 0.5*(sipm_par(0, rr) + sipm_par(1, rr))
                 sipm_map += probs*ept
 
+            # Normalize the SiPM map.
+            sipm_map /= np.sum(sipm_map)
+
             # Multiply the SiPM map by a factor proportional to the slice energy.
             sipm_map *= en[ss]/en_evt
             print("slice {} with energy {}".format(ss,en[ss]))
@@ -205,12 +244,12 @@ for ee in range(Ntrks):
         #sipm_map -= np.mean(sipm_map)
         #sipm_map /= np.std(sipm_map)
             
-        # Save the SiPM map to an HDF5 file.
-        if(valid_evt): 
-            envector = np.zeros(nsipm)
-            envector[0:len(en)] += en
-            maparray.append([sipm_matrix])
-            earray.append([envector])
+    # Save the SiPM map to an HDF5 file.
+    if(valid_evt): 
+        envector = np.zeros(nsipm)
+        envector[0:len(en)] += en
+        maparray.append([sipm_matrix])
+        earray.append([envector])
 
 voxfile.close()
 h5maps.close()
