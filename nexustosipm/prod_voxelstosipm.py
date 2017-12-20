@@ -18,6 +18,7 @@ from glob import glob
 # - number of events
 
 script_name = "/home/jrenner/jerenner/dnntoy/nexustosipm/nexustosipm.py"
+JOBSDIR = '/home/jrenner/analysis/MC/descape/jobsEPEM'
 
 def get_parser(args=None):
     parser = argparse.ArgumentParser(description='Script to produce HDF5 files')
@@ -54,10 +55,7 @@ def checkmakedir( path ):
         print('creating directory...\n' + path)
 
 #IO dirs
-PATHIN = '/home/jrenner/analysis/MC/descape'
-JOBSDIR = '/home/jrenner/analysis/MC/descape/jobsEPEM'
 
-checkmakedir(PATHIN)
 checkmakedir(JOBSDIR)
 
 exec_template_file = '/home/jrenner/production/templates/voxelstosipm.sh'
