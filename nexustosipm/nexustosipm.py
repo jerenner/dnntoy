@@ -50,7 +50,6 @@ if(nfevt > nevts or (ijob + 1 == jobs)): nfevt = nevts
 vox_ext = 500
 vox_sizeX = 2
 vox_sizeY = 2
-vox_sizeZ = 2
 
 # Slices: number of x and y values.
 NX = int(vox_ext/vox_sizeX)
@@ -63,7 +62,7 @@ slice_width = 5
 RNG_LIM = vox_ext
 
 # SiPM plane geometry definition
-nsipm = 50             # number of SiPMs in response map (a 10x10 response map covers a 100x100 range)
+nsipm = 50             # number of SiPMs in one dimension of the response map (a 10x10 response map covers a 100x100 range)
 sipm_pitch = 10.       # distance between SiPMs
 sipm_edge_width = 5.   # distance between SiPM and edge of board
 
@@ -215,11 +214,6 @@ for ee in range(nievt,nfevt,1):
             valid_evt = False
         elif(valid_evt):
             
-            # Center the slices about RNG_LIM/2.
-            #x0 = int((xmin + xmax)/2. - RNG_LIM/2.)
-            #y0 = int((ymin + ymax)/2. - RNG_LIM/2.)
-            #nzx -= x0; nzy -= y0
-            
             # Create the corresponding SiPM map.
             sipm_map = np.zeros(nsipm*nsipm).astype('float32')
             for xpt,ypt,ept in zip(nzx,nzy,nze):
@@ -240,10 +234,6 @@ for ee in range(nievt,nfevt,1):
             sipm_map = sipm_map.reshape(nsipm,nsipm)
             sipm_matrix[:,:,ss] += sipm_map
 
-        # Normalize the probability map, and set sigma = 1.
-        #sipm_map -= np.mean(sipm_map)
-        #sipm_map /= np.std(sipm_map)
-            
     # Save the SiPM map to an HDF5 file.
     if(valid_evt): 
         envector = np.zeros(nsipm)
