@@ -46,6 +46,11 @@ nievt = ijob*evtsperjob
 nfevt = (ijob+1)*evtsperjob
 if(nfevt > nevts or (ijob + 1 == jobs)): nfevt = nevts
 
+ulight_frac = 0.0001     # scale factor for uniform reflected light: energy E emitted from a single point
+                         #   will give rise to a uniform illumination of the SiPM plane  in addition to 
+                         #   its usual light cone.  The amount of illumination will be a uniform value with
+                         #   with min 0 and max E*sipm_par(0,0)*ulight_frac.
+
 ## Initial setup configuration.
 vox_ext = 500
 vox_sizeX = 2
@@ -215,7 +220,7 @@ for ee in range(nievt,nfevt,1):
         elif(valid_evt):
             
             # Create the corresponding SiPM map.
-            sipm_map = np.zeros(nsipm*nsipm).astype('float32')
+            sipm_map = np.random.poisson(1,size=nsipm*nsipm)*en[ss]*sipm_par(0,0)*ulight_frac #np.zeros(nsipm*nsipm).astype('float32')
             for xpt,ypt,ept in zip(nzx,nzy,nze):
 
                 # Compute the distances and probabilities.  Add the probabilities to the sipm map.
