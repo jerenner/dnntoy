@@ -51,6 +51,8 @@ ulight_frac = 0.0001     # scale factor for uniform reflected light: energy E em
                          #   its usual light cone.  The amount of illumination will be a uniform value with
                          #   with min 0 and max E*sipm_par(0,0)*ulight_frac.
 
+E_to_Q = 1.0e7             # energy to Q (pes) conversion factor
+
 ## Initial setup configuration.
 vox_ext = 500
 vox_sizeX = 2
@@ -128,6 +130,14 @@ def sipm_par(tbin,r):
         if(r < rmax):
             return vpar
         return 0.0
+
+# Parameters for theoretical light cone function.
+A = 1.
+d = 5.
+ze = 5.
+def sipm_lcone(r):
+    v = (A/(4*np.pi*d*np.sqrt(r**2 + ze**2)))*(1 - np.sqrt((r**2 + ze**2)/(r**2 + (ze+d)**2)))
+    return
 
 # Create slices for the specified event.
 #  hfile: the HDF5 files containing the events
@@ -220,20 +230,23 @@ for ee in range(nievt,nfevt,1):
         elif(valid_evt):
             
             # Create the corresponding SiPM map.
-            sipm_map = np.random.poisson(1,size=nsipm*nsipm)*en[ss]*sipm_par(0,0)*ulight_frac #np.zeros(nsipm*nsipm).astype('float32')
+            sipm_map = np.random.poisson(1,size=nsipm*nsipm)*en[ss]*E_to_Q*sipm_par(0,0)*ulight_frac #np.zeros(nsipm*nsipm).astype('float32')
             for xpt,ypt,ept in zip(nzx,nzy,nze):
 
                 # Compute the distances and probabilities.  Add the probabilities to the sipm map.
                 rr = np.array([np.sqrt((xi - xpt*vox_sizeX)**2 + (yi - ypt*vox_sizeY)**2) for xi,yi in zip(pos_x,pos_y)])
                 probs = 0.5*(sipm_par(0, rr) + sipm_par(1, rr))
-                sipm_map += probs*ept
+                sipm_map += probs*ept*E_to_Q
+
+            # Apply the 1-pe threshold.
+            sipm_map[sipm_map < 1] = 0
 
             # Normalize the SiPM map.
-            sipm_map /= np.sum(sipm_map)
+            #sipm_map /= np.sum(sipm_map)
 
             # Multiply the SiPM map by a factor proportional to the slice energy.
-            sipm_map *= en[ss]/en_evt
-            print("slice {} with energy {}".format(ss,en[ss]))
+            #sipm_map *= en[ss]/en_evt
+            #print("slice {} with energy {}".format(ss,en[ss]))
 
             # Reshape the map and add it to the list of maps.
             sipm_map = sipm_map.reshape(nsipm,nsipm)
