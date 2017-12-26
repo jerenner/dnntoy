@@ -46,12 +46,12 @@ nievt = ijob*evtsperjob
 nfevt = (ijob+1)*evtsperjob
 if(nfevt > nevts or (ijob + 1 == jobs)): nfevt = nevts
 
-ulight_frac = 0.0001     # scale factor for uniform reflected light: energy E emitted from a single point
+ulight_frac = 3.0e-7     # scale factor for uniform reflected light: energy E emitted from a single point
                          #   will give rise to a uniform illumination of the SiPM plane  in addition to 
                          #   its usual light cone.  The amount of illumination will be a uniform value with
                          #   with min 0 and max E*sipm_par(0,0)*ulight_frac.
 
-E_to_Q = 1.0e7             # energy to Q (pes) conversion factor
+E_to_Q = 0.8e6             # energy to Q (pes) conversion factor
 
 ## Initial setup configuration.
 vox_ext = 500
@@ -69,7 +69,7 @@ slice_width = 5
 RNG_LIM = vox_ext
 
 # SiPM plane geometry definition
-nsipm = 50             # number of SiPMs in one dimension of the response map (a 10x10 response map covers a 100x100 range)
+nsipm = 48             # number of SiPMs in one dimension of the response map (a 10x10 response map covers a 100x100 range)
 sipm_pitch = 10.       # distance between SiPMs
 sipm_edge_width = 5.   # distance between SiPM and edge of board
 
@@ -134,10 +134,10 @@ def sipm_par(tbin,r):
 # Parameters for theoretical light cone function.
 A = 1.
 d = 5.
-ze = 5.
+ze = 4.
 def sipm_lcone(r):
     v = (A/(4*np.pi*d*np.sqrt(r**2 + ze**2)))*(1 - np.sqrt((r**2 + ze**2)/(r**2 + (ze+d)**2)))
-    return
+    return v
 
 # Create slices for the specified event.
 #  hfile: the HDF5 files containing the events
@@ -187,6 +187,10 @@ maparray = h5maps.create_earray(h5maps.root, 'maps', atom_m, (0, nsipm, nsipm, n
 atom_e = tb.Atom.from_dtype(np.dtype('float32'))
 earray = h5maps.create_earray(h5maps.root, 'energies', atom_e, (0, nsipm), filters=filters)
 
+# Open the file containing the SiPMs to be nullified by default.
+fzsipms = np.load("/home/jrenner/jerenner/dnntoy/nexustosipm/omit_sipms.npz")
+zsipms = fzsipms['zsipms']
+
 xrng = []; yrng = []   # x- and y-ranges
 nspevt = []            # number of slices per event
 slices_x = []; slices_y = []; slices_e = []   # slice arrays
@@ -230,16 +234,21 @@ for ee in range(nievt,nfevt,1):
         elif(valid_evt):
             
             # Create the corresponding SiPM map.
-            sipm_map = np.random.poisson(1,size=nsipm*nsipm)*en[ss]*E_to_Q*sipm_par(0,0)*ulight_frac #np.zeros(nsipm*nsipm).astype('float32')
+            sipm_map = np.random.poisson(0.08,size=nsipm*nsipm).astype('float32') #np.zeros(nsipm*nsipm).astype('float32')
+            umean = en[ss]*E_to_Q*ulight_frac
+            sipm_map += np.random.normal(umean,np.sqrt(umean),size=nsipm*nsipm).astype('float32')
             for xpt,ypt,ept in zip(nzx,nzy,nze):
 
                 # Compute the distances and probabilities.  Add the probabilities to the sipm map.
                 rr = np.array([np.sqrt((xi - xpt*vox_sizeX)**2 + (yi - ypt*vox_sizeY)**2) for xi,yi in zip(pos_x,pos_y)])
-                probs = 0.5*(sipm_par(0, rr) + sipm_par(1, rr))
+                probs = sipm_lcone(rr) #0.5*(sipm_par(0, rr) + sipm_par(1, rr))
                 sipm_map += probs*ept*E_to_Q
 
             # Apply the 1-pe threshold.
-            sipm_map[sipm_map < 1] = 0
+            sipm_map[sipm_map < 1] = 0.
+
+            # Zero the disabled SiPMs.
+            sipm_map[zsipms] = 0.
 
             # Normalize the SiPM map.
             #sipm_map /= np.sum(sipm_map)
