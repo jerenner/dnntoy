@@ -46,12 +46,12 @@ nievt = ijob*evtsperjob
 nfevt = (ijob+1)*evtsperjob
 if(nfevt > nevts or (ijob + 1 == jobs)): nfevt = nevts
 
-ulight_frac = 3.0e-7     # scale factor for uniform reflected light: energy E emitted from a single point
+ulight_frac = 8.0e-7     # scale factor for uniform reflected light: energy E emitted from a single point
                          #   will give rise to a uniform illumination of the SiPM plane  in addition to 
                          #   its usual light cone.  The amount of illumination will be a uniform value with
                          #   with min 0 and max E*sipm_par(0,0)*ulight_frac.
 
-E_to_Q = 0.8e6             # energy to Q (pes) conversion factor
+E_to_Q = 7.5e3             # energy to Q (pes) conversion factor
 
 ## Initial setup configuration.
 vox_ext = 500
@@ -134,7 +134,7 @@ def sipm_par(tbin,r):
 # Parameters for theoretical light cone function.
 A = 1.
 d = 5.
-ze = 4.
+ze = 5.0
 def sipm_lcone(r):
     v = (A/(4*np.pi*d*np.sqrt(r**2 + ze**2)))*(1 - np.sqrt((r**2 + ze**2)/(r**2 + (ze+d)**2)))
     return v
@@ -170,8 +170,8 @@ def slice_evt(hfile,nevt,zwidth):
         energies[islice] += e
     
     # Normalize the slices.
-    for s in range(nslices):
-        slices[s] /= energies[s]
+    #for s in range(nslices):
+    #    slices[s] /= energies[s]
         
     # Return the list of slices and energies.
     return [energies, slices]
@@ -206,6 +206,7 @@ for ee in range(nievt,nfevt,1):
 
     # Calculate the total event energy.
     en_evt = sum(en)
+    print("Energies: {}".format(en))
     
     # Create a 2D sipm map from each slice and add it to the final 3D matrix.
     valid_evt = True
@@ -234,15 +235,19 @@ for ee in range(nievt,nfevt,1):
         elif(valid_evt):
             
             # Create the corresponding SiPM map.
-            sipm_map = np.random.poisson(0.08,size=nsipm*nsipm).astype('float32') #np.zeros(nsipm*nsipm).astype('float32')
+            #sipm_map = 0.8*np.ones(nsipm*nsipm).astype('float32')
             umean = en[ss]*E_to_Q*ulight_frac
-            sipm_map += np.random.normal(umean,np.sqrt(umean),size=nsipm*nsipm).astype('float32')
+            #sipm_map = np.maximum(np.random.normal(umean,umean,size=nsipm*nsipm).astype('float32'),np.zeros(nsipm*nsipm).astype('float32'))
+            sipm_map = np.maximum(np.random.normal(umean,umean,size=nsipm*nsipm).astype('float32'),np.zeros(nsipm*nsipm).astype('float32'))
             for xpt,ypt,ept in zip(nzx,nzy,nze):
 
                 # Compute the distances and probabilities.  Add the probabilities to the sipm map.
                 rr = np.array([np.sqrt((xi - xpt*vox_sizeX)**2 + (yi - ypt*vox_sizeY)**2) for xi,yi in zip(pos_x,pos_y)])
                 probs = sipm_lcone(rr) #0.5*(sipm_par(0, rr) + sipm_par(1, rr))
                 sipm_map += probs*ept*E_to_Q
+                print("Added pt energy {}".format(ept))
+            print("Total slice energy is {}".format(np.sum(nze)))
+            sipm_map = np.maximum(np.random.normal(sipm_map,np.sqrt(sipm_map)),np.zeros(len(sipm_map)))
 
             # Apply the 1-pe threshold.
             sipm_map[sipm_map < 1] = 0.
